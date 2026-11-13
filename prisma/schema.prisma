@@ -1,0 +1,235 @@
+// Prisma schema for درمانگر (Darmanegar) - Health Services Platform
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Admin (single user, the app owner) =====
+model Admin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ===== Provider (Health Service Provider) =====
+model Provider {
+  id              String   @id @default(cuid())
+  firstName       String
+  lastName        String
+  nationalId      String   @unique
+  username        String   @unique
+  password        String
+  profilePhoto    String?
+  // Service specialty
+  serviceType     ServiceType
+  isWoundSpecialist Boolean @default(false)
+  // Location: province + region/area within the city
+  province        String
+  city            String
+  region          String?
+  // Status: PENDING (waiting admin approval), APPROVED, REJECTED
+  status          ProviderStatus @default(PENDING)
+  rejectionReason String?
+  // Referral system
+  referralCode    String   @unique @default(cuid())
+  referredById    String? // Points to another Provider
+  // Free proposal counter: starts at 5, or 7 if registered with referral code
+  freeProposalCount Int    @default(5)
+  proposalsSubmitted Int  @default(0)
+  // Wallet / earnings tracking
+  walletBalance   Int      @default(0) // in Toman
+  totalPaid       Int      @default(0) // in Toman
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  documents       ProviderDocument[]
+  proposals       Proposal[]
+  chatsAsProvider Chat[]
+  payments        Payment[]
+  referredBy      Provider? @relation("ReferralRelation", fields: [referredById], references: [id])
+  referrals       Provider[] @relation("ReferralRelation")
+  receivedRequests ReceivedRequest[]
+  selectedForRequests ServiceRequest[]
+
+  @@index([province, city, serviceType, status])
+  @@index([status])
+}
+
+// Documents uploaded by provider during registration
+model ProviderDocument {
+  id          String   @id @default(cuid())
+  providerId  String
+  type        DocumentType
+  fileUrl     String   // path under /public/uploads/
+  fileName    String
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, type])
+}
+
+// ===== Service Request (from requester, no registration needed) =====
+model ServiceRequest {
+  id            String   @id @default(cuid())
+  // Anonymous requester info
+  requesterName String
+  requesterPhone String
+  // Service details
+  serviceType   ServiceType
+  province      String
+  city          String
+  region        String?
+  address       String?
+  description   String
+  // Status lifecycle
+  status        RequestStatus @default(ACTIVE)
+  // Timing: 20-minute validity
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+  selectedProviderId String?
+  // Token for anonymous requester to access their request (chat etc.)
+  requesterToken String @unique @default(cuid())
+
+  // Relations
+  proposals     Proposal[]
+  chat          Chat?
+  selectedProvider Provider? @relation(fields: [selectedProviderId], references: [id])
+  receivedBy    ReceivedRequest[]
+
+  @@index([province, city, serviceType, status])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// Record of which providers received/were notified about a request
+model ReceivedRequest {
+  id          String   @id @default(cuid())
+  requestId   String
+  providerId  String
+  notified    Boolean  @default(true)
+  responded   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  request     ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  provider    Provider       @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, providerId])
+  @@index([providerId])
+}
+
+// ===== Proposal (provider's response to a request) =====
+model Proposal {
+  id          String   @id @default(cuid())
+  requestId   String
+  providerId  String
+  price       Int      // in Toman
+  message     String?
+  createdAt   DateTime @default(now())
+
+  request     ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  provider    Provider       @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, providerId])
+  @@index([requestId])
+}
+
+// ===== Chat between requester and selected provider =====
+model Chat {
+  id          String   @id @default(cuid())
+  requestId   String   @unique
+  providerId  String
+  // We use the requester token to identify the anonymous requester
+  createdAt   DateTime @default(now())
+
+  request     ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  provider    Provider       @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  messages    ChatMessage[]
+
+  @@index([providerId])
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  chatId      String
+  sender      MessageSender // REQUESTER or PROVIDER
+  content     String
+  createdAt   DateTime @default(now())
+  readAt      DateTime?
+
+  chat        Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+}
+
+// ===== Payment (proposal fee from provider) =====
+model Payment {
+  id          String   @id @default(cuid())
+  providerId  String
+  amount      Int      // in Toman
+  type        PaymentType // PROPOSAL_FEE
+  proposalId  String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+}
+
+// ===== Enums =====
+enum ServiceType {
+  NURSING        // پرستاری
+  CAREGIVER      // کمک‌پرستاری / مراقبت از سالمند
+  WOUND_SPECIALIST // کارشناس زخم
+  MASSAGE        // ماساژ درمانی
+  PHYSIOTHERAPY  // فیزیوتراپی
+}
+
+enum ProviderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RequestStatus {
+  ACTIVE       // broadcasting to providers
+  SELECTED     // requester picked a provider
+  EXPIRED      // 20 min passed without selection
+  CANCELLED    // requester cancelled
+  COMPLETED    // service done
+}
+
+enum DocumentType {
+  NURSING_DEGREE     // مدرک کارشناسی پرستاری
+  PROFESSIONAL_COMPETENCY // صلاحیت حرفه‌ای
+  NURSING_CARD       // کارت نظام پرستاری
+  CAREGIVER_CERT     // مدرک کمک‌پرستاری یک‌ساله
+  WOUND_CERT         // مدرک کارشناس زخم
+  MASSAGE_CERT       // مدرک مهارتی ماساژ
+  PHYSIO_CERT        // مدرک فیزیوتراپی
+  PROFILE_PHOTO      // عکس پروفایل
+}
+
+enum MessageSender {
+  REQUESTER
+  PROVIDER
+  SYSTEM
+}
+
+enum PaymentType {
+  PROPOSAL_FEE
+  REFERRAL_BONUS
+  REFUND
+}

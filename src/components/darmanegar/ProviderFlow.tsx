@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -25,7 +26,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
-import { SERVICE_TYPES, IRAN_PROVINCES, getCitiesForProvince, REQUIRED_DOCUMENTS, DOCUMENT_LABELS, FREE_PROPOSAL_LIMIT, FREE_PROPOSAL_WITH_REFERRAL, PROPOSAL_FEE } from '@/lib/constants'
+import { SERVICE_TYPES, IRAN_PROVINCES, getCitiesForProvince, getNeighborhoodsForCity, REQUIRED_DOCUMENTS, DOCUMENT_LABELS, FREE_PROPOSAL_LIMIT, FREE_PROPOSAL_WITH_REFERRAL, PROPOSAL_FEE } from '@/lib/constants'
 import { getSocket } from '@/lib/ws-client'
 import type { ServiceType, DocumentType } from '@prisma/client'
 
@@ -282,7 +283,7 @@ function ProviderRegister({ onBack, onRegistered }: {
   const [serviceType, setServiceType] = useState<ServiceType | ''>('')
   const [province, setProvince] = useState('')
   const [city, setCity] = useState('')
-  const [region, setRegion] = useState('')
+  const [neighborhoods, setNeighborhoods] = useState<string[]>([]) // محله‌های سرویس‌دهی
   const [referralCode, setReferralCode] = useState('')
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null)
   const [docFiles, setDocFiles] = useState<Partial<Record<DocumentType, File>>>({})
@@ -297,6 +298,7 @@ function ProviderRegister({ onBack, onRegistered }: {
     if (!password || password.length < 6) return toast.error('رمز عبور باید حداقل ۶ کاراکتر باشد')
     if (!serviceType) return toast.error('نوع خدمت را انتخاب کنید')
     if (!province || !city) return toast.error('استان و شهر را انتخاب کنید')
+    if (neighborhoods.length === 0) return toast.error('حداقل یک محله برای سرویس‌دهی انتخاب کنید')
     if (!profilePhoto) return toast.error('عکس پروفایل الزامی است')
 
     for (const docType of requiredDocs) {
@@ -316,7 +318,8 @@ function ProviderRegister({ onBack, onRegistered }: {
       formData.append('serviceType', serviceType)
       formData.append('province', province)
       formData.append('city', city)
-      formData.append('region', region)
+      // محله‌های سرویس‌دهی به‌صورت JSON array
+      formData.append('servedNeighborhoods', JSON.stringify(neighborhoods))
       if (referralCode) formData.append('referralCode', referralCode)
       if (profilePhoto) formData.append('profilePhoto', profilePhoto)
 
@@ -454,7 +457,7 @@ function ProviderRegister({ onBack, onRegistered }: {
 
             <div>
               <Label>شهر</Label>
-              <Select value={city || undefined} onValueChange={setCity} disabled={!province}>
+              <Select value={city || undefined} onValueChange={(v) => { setCity(v); setNeighborhoods([]) }} disabled={!province}>
                 <SelectTrigger><SelectValue placeholder={province ? 'انتخاب شهر...' : 'ابتدا استان را انتخاب کنید'} /></SelectTrigger>
                 <SelectContent className="max-h-72">
                   {getCitiesForProvince(province).map((c) => (
@@ -465,8 +468,26 @@ function ProviderRegister({ onBack, onRegistered }: {
             </div>
 
             <div>
-              <Label>منطقه / محله (اختیاری)</Label>
-              <Input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="مثلاً: ولیعصر" />
+              <Label>
+                محله‌های سرویس‌دهی
+                {neighborhoods.length > 0 && (
+                  <Badge variant="secondary" className="mr-2 text-[10px]">
+                    {neighborhoods.length.toLocaleString('fa-IR')} محله انتخاب‌شده
+                  </Badge>
+                )}
+              </Label>
+              {!city ? (
+                <p className="text-xs text-muted-foreground mt-2">ابتدا شهر را انتخاب کنید تا محله‌ها نمایش داده شوند.</p>
+              ) : (
+                <NeighborhoodMultiSelect
+                  city={city}
+                  selected={neighborhoods}
+                  onChange={setNeighborhoods}
+                />
+              )}
+              <p className="text-xs text-muted-foreground mt-2">
+                فقط درخواست‌های مربوط به محله‌های انتخاب‌شده به شما ارسال می‌شود. می‌توانید چند محله را انتخاب کنید.
+              </p>
             </div>
 
             <Separator />
@@ -521,6 +542,71 @@ function ProviderRegister({ onBack, onRegistered }: {
   )
 }
 
+// Multi-select for neighborhoods (toggle-style with badges)
+function NeighborhoodMultiSelect({ city, selected, onChange }: {
+  city: string
+  selected: string[]
+  onChange: (selected: string[]) => void
+}) {
+  const all = getNeighborhoodsForCity(city)
+
+  const toggle = (n: string) => {
+    if (selected.includes(n)) {
+      onChange(selected.filter((x) => x !== n))
+    } else {
+      onChange([...selected, n])
+    }
+  }
+
+  const selectAll = () => onChange(all)
+  const clearAll = () => onChange([])
+
+  return (
+    <div className="border rounded-lg p-3 bg-white">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-xs text-muted-foreground">
+          {all.length.toLocaleString('fa-IR')} محله در {city}
+        </span>
+        <div className="flex gap-1">
+          <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px]" onClick={selectAll}>
+            انتخاب همه
+          </Button>
+          <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px]" onClick={clearAll}>
+            پاک کردن
+          </Button>
+        </div>
+      </div>
+      <ScrollArea className="h-48 rounded border bg-muted/30 p-2">
+        <div className="flex flex-wrap gap-1.5">
+          {all.map((n) => {
+            const isSelected = selected.includes(n)
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => toggle(n)}
+                className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                  isSelected
+                    ? 'bg-teal-gradient border-primary text-primary-foreground shadow-sm'
+                    : 'bg-white border-border text-foreground hover:border-primary/50'
+                }`}
+              >
+                {n}
+                {isSelected && <span className="mr-1">✓</span>}
+              </button>
+            )
+          })}
+        </div>
+      </ScrollArea>
+      {selected.length > 0 && (
+        <div className="mt-2 text-[10px] text-primary">
+          {selected.length.toLocaleString('fa-IR')} محله انتخاب‌شده — درخواست‌ها فقط از این محله‌ها دریافت می‌شود
+        </div>
+      )}
+    </div>
+  )
+}
+
 function FileInput({ file, onChange, accept = '*' }: {
   file: File | null
   onChange: (f: File | null) => void
@@ -567,6 +653,7 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
   const [myProposals, setMyProposals] = useState<MyProposal[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('requests')
+  const [providerServedNeighborhoods, setProviderServedNeighborhoods] = useState<string[]>([])
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -578,6 +665,9 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
       setMyProposals(data.myProposals || [])
       if (data.provider) {
         onProviderUpdate({ ...provider, ...data.provider })
+        if (data.provider.servedNeighborhoods) {
+          setProviderServedNeighborhoods(data.provider.servedNeighborhoods)
+        }
       }
     } catch (e) {
       // ignore
@@ -604,6 +694,7 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
         province: provider.province,
         city: provider.city,
         serviceType: provider.serviceType,
+        servedNeighborhoods: providerServedNeighborhoods,
       })
     }
     if (socket.connected) join()
@@ -630,7 +721,7 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
       socket.off('provider:request_closed', handleRequestClosed)
       socket.emit('provider:leave')
     }
-  }, [provider.id, provider.status, provider.province, provider.city, provider.serviceType])
+  }, [provider.id, provider.status, provider.province, provider.city, provider.serviceType, providerServedNeighborhoods])
 
   const freeRemaining = Math.max(0, provider.freeProposalCount - provider.proposalsSubmitted)
   const isApproved = provider.status === 'APPROVED'

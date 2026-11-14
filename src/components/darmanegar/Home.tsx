@@ -5,8 +5,7 @@
 import { useViewStore } from '@/stores/useViewStore'
 import { LogoWithText } from './Logo'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { HeartHandshake, Stethoscope, ShieldCheck, ArrowLeft, Activity, MapPin, Users, Clock } from 'lucide-react'
+import { HeartHandshake, Stethoscope, ShieldCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export function Home() {
@@ -34,7 +33,7 @@ export function Home() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-center text-muted-foreground mb-8 max-w-sm"
+          className="text-center text-muted-foreground mb-10 max-w-sm"
         >
           پلتفرم هوشمند اتصال درخواست‌کنندگان خدمات سلامت به ارائه‌دهندگان معتبر در سراسر ایران
         </motion.p>
@@ -52,7 +51,7 @@ export function Home() {
             >
               <div className="flex flex-col items-center gap-1">
                 <HeartHandshake className="w-7 h-7" />
-                <span className="font-bold">درخواست‌کننده خدمات سلامت</span>
+                <span className="font-bold">ورود درخواست‌کننده خدمات سلامت</span>
                 <span className="text-xs opacity-90 font-normal">نیاز به خدمات پرستاری، مراقبتی یا درمانی دارم</span>
               </div>
             </Button>
@@ -71,7 +70,7 @@ export function Home() {
             >
               <div className="flex flex-col items-center gap-1">
                 <Stethoscope className="w-7 h-7 text-primary" />
-                <span className="font-bold text-primary">ارائه‌دهنده خدمات سلامت</span>
+                <span className="font-bold text-primary">ورود ارائه‌دهنده خدمات سلامت</span>
                 <span className="text-xs text-muted-foreground font-normal">پرستار، مراقب، ماساژور یا فیزیوتراپ</span>
               </div>
             </Button>
@@ -90,37 +89,15 @@ export function Home() {
               className="w-full text-muted-foreground"
             >
               <ShieldCheck className="w-4 h-4 ml-1" />
-              ورود مدیر سیستم
+              ورود مدیریت
             </Button>
           </motion.div>
         </div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="mt-10 grid grid-cols-3 gap-2 w-full max-w-md text-center"
-        >
-          <Feature icon={<MapPin className="w-4 h-4" />} title="۳۱ استان" />
-          <Feature icon={<Users className="w-4 h-4" />} title="۵ پیشنهاد" />
-          <Feature icon={<Clock className="w-4 h-4" />} title="۲۰ دقیقه" />
-        </motion.div>
       </main>
 
       <footer className="mt-auto px-4 py-4 text-center text-xs text-muted-foreground">
         © درمانگر — تمامی حقوق محفوظ است
       </footer>
     </div>
-  )
-}
-
-function Feature({ icon, title }: { icon: React.ReactNode; title: string }) {
-  return (
-    <Card className="border-primary/20 bg-white/60">
-      <CardContent className="p-2 flex flex-col items-center gap-1">
-        <span className="text-primary">{icon}</span>
-        <span className="text-xs font-medium">{title}</span>
-      </CardContent>
-    </Card>
   )
 }

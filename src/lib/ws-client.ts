@@ -32,6 +32,7 @@ export function providerJoin(data: {
   province: string
   city: string
   serviceType: string
+  servedNeighborhoods?: string[]
 }) {
   const s = getSocket()
   return new Promise<void>((resolve) => {

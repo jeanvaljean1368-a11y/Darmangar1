@@ -1,8 +1,9 @@
-// GET /api/provider/requests — list active requests matching provider's region+serviceType
+// GET /api/provider/requests — list active requests matching provider's served neighborhoods + serviceType
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { getProviderFromRequest } from '@/lib/auth'
-import { ok, unauthorized, bad } from '@/lib/http'
+import { ok, unauthorized } from '@/lib/http'
+import { MAX_PROPOSALS_PER_REQUEST, parseServedNeighborhoods } from '@/lib/constants'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,19 +23,34 @@ export async function GET(request: NextRequest) {
       freeProposalCount: true,
       proposalsSubmitted: true,
       walletBalance: true,
+      servedNeighborhoods: true,
     },
   })
 
   if (!full) return unauthorized()
   if (full.status !== 'APPROVED') {
     return ok({
-      provider: full,
-      requests: [],
+      provider: {
+        id: full.id,
+        serviceType: full.serviceType,
+        province: full.province,
+        city: full.city,
+        status: full.status,
+        freeProposalCount: full.freeProposalCount,
+        proposalsSubmitted: full.proposalsSubmitted,
+        walletBalance: full.walletBalance,
+      },
+      activeRequests: [],
+      myProposals: [],
       message: 'حساب شما هنوز توسط مدیر تأیید نشده است.',
     })
   }
 
-  // Find active requests in provider's region + serviceType that haven't been responded to by this provider yet
+  // Parse provider's served neighborhoods
+  const servedNeighborhoods = parseServedNeighborhoods(full.servedNeighborhoods)
+
+  // Find active requests in provider's province + city + serviceType
+  // Then filter by neighborhood match (requester's neighborhood is in provider's servedNeighborhoods)
   const now = new Date()
   const requests = await db.serviceRequest.findMany({
     where: {
@@ -47,33 +63,42 @@ export async function GET(request: NextRequest) {
       proposals: {
         none: { providerId: full.id },
       },
-      // Cap of 5 proposals not yet reached
-      // We need to count proposals
     },
     include: {
       proposals: { select: { id: true } },
     },
     orderBy: { createdAt: 'desc' },
-    take: 50,
+    take: 100,
   })
 
-  // Filter: only requests with < 5 proposals
-  const MAX_PROPOSALS = 5
+  // Filter: only requests where requester's neighborhood is in provider's served list
+  // AND requests with < 5 proposals
   const activeRequests = requests
-    .filter((r) => r.proposals.length < MAX_PROPOSALS)
+    .filter((r) => {
+      // Neighborhood match: provider serves requester's neighborhood
+      if (r.neighborhood && !servedNeighborhoods.includes(r.neighborhood)) {
+        return false
+      }
+      // Cap of 5 proposals not yet reached
+      if (r.proposals.length >= MAX_PROPOSALS_PER_REQUEST) {
+        return false
+      }
+      return true
+    })
     .map((r) => ({
       id: r.id,
       serviceType: r.serviceType,
       province: r.province,
       city: r.city,
-      region: r.region,
+      region: r.neighborhood || r.region,
+      neighborhood: r.neighborhood,
       description: r.description,
       requesterName: r.requesterName,
       createdAt: r.createdAt,
       expiresAt: r.expiresAt,
       remainingSeconds: Math.max(0, Math.floor((r.expiresAt.getTime() - now.getTime()) / 1000)),
       proposalsCount: r.proposals.length,
-      maxProposals: MAX_PROPOSALS,
+      maxProposals: MAX_PROPOSALS_PER_REQUEST,
     }))
 
   // Get provider's own submitted proposals (with status of the request)
@@ -89,6 +114,7 @@ export async function GET(request: NextRequest) {
           description: true,
           requesterName: true,
           status: true,
+          neighborhood: true,
         },
       },
     },
@@ -97,7 +123,17 @@ export async function GET(request: NextRequest) {
   })
 
   return ok({
-    provider: full,
+    provider: {
+      id: full.id,
+      serviceType: full.serviceType,
+      province: full.province,
+      city: full.city,
+      status: full.status,
+      freeProposalCount: full.freeProposalCount,
+      proposalsSubmitted: full.proposalsSubmitted,
+      walletBalance: full.walletBalance,
+      servedNeighborhoods,
+    },
     activeRequests,
     myProposals: myProposals.map((p) => ({
       id: p.id,

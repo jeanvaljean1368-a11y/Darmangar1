@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Send, ArrowRight, Phone, MapPin } from 'lucide-react'
+import { Send, ArrowRight, Phone, MapPin, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { getSocket } from '@/lib/ws-client'
 
@@ -166,6 +166,14 @@ export function ChatPanel({ chatId, requesterToken, onBack }: ChatPanelProps) {
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
+      {/* Retention warning (red) */}
+      <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center gap-2 text-red-700">
+        <AlertTriangle className="w-4 h-4 shrink-0" />
+        <p className="text-xs font-medium">
+          چت‌ها جهت پیگیری‌های بعدی تا ۶ ماه حذف نخواهند شد.
+        </p>
+      </div>
+
       {/* Header */}
       <div className="border-b bg-white/80 backdrop-blur px-4 py-3 flex items-center gap-3">
         {onBack && (
@@ -183,6 +191,7 @@ export function ChatPanel({ chatId, requesterToken, onBack }: ChatPanelProps) {
           <div className="font-bold truncate">{otherPartyName}</div>
           <div className="text-xs text-muted-foreground truncate">
             {serviceLabel} • {chat.request.province} - {chat.request.city}
+            {chat.request.region && ` • محله ${chat.request.region}`}
           </div>
         </div>
         {chat.isProvider && chat.request.requesterPhone && (

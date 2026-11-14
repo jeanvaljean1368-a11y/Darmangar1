@@ -19,11 +19,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   ArrowRight, ArrowLeft, Syringe, Heart, Bandage, Hand, Activity,
   MapPin, Clock, User, Phone, CheckCircle2, MessageCircle, XCircle,
-  Loader2, RefreshCw, Home as HomeIcon
+  Loader2, RefreshCw, Home as HomeIcon, Info
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { SERVICE_TYPES, IRAN_PROVINCES, getCitiesForProvince } from '@/lib/constants'
+import { SERVICE_TYPES, IRAN_PROVINCES, getCitiesForProvince, getNeighborhoodsForCity } from '@/lib/constants'
 import { getSocket } from '@/lib/ws-client'
 import type { ServiceType } from '@prisma/client'
 
@@ -70,12 +70,11 @@ export function RequesterFlow() {
   const [serviceType, setServiceType] = useState<ServiceType | null>(null)
   const [province, setProvince] = useState<string>('')
   const [city, setCity] = useState<string>('')
-  const [region, setRegion] = useState<string>('')
+  const [region, setRegion] = useState<string>('') // محله
 
   // Form fields
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [address, setAddress] = useState('')
   const [description, setDescription] = useState('')
 
   // Request state
@@ -90,6 +89,10 @@ export function RequesterFlow() {
   const handleSelectLocation = () => {
     if (!province || !city) {
       toast.error('لطفاً استان و شهر را انتخاب کنید')
+      return
+    }
+    if (!region) {
+      toast.error('لطفاً محله را انتخاب کنید')
       return
     }
     setStep('form')
@@ -113,8 +116,7 @@ export function RequesterFlow() {
           serviceType,
           province,
           city,
-          region: region.trim() || null,
-          address: address.trim() || null,
+          neighborhood: region, // محله انتخاب‌شده
           description: description.trim(),
         }),
       })
@@ -129,7 +131,7 @@ export function RequesterFlow() {
         serviceType: data.request.serviceType,
         province: data.request.province,
         city: data.request.city,
-        region: data.request.region,
+        region: data.request.neighborhood || data.request.region,
         description: data.request.description,
         expiresAt: data.request.expiresAt,
         status: data.request.status,
@@ -394,7 +396,7 @@ export function RequesterFlow() {
                   </div>
                   <div>
                     <Label>شهر</Label>
-                    <Select value={city || undefined} onValueChange={setCity} disabled={!province}>
+                    <Select value={city || undefined} onValueChange={(v) => { setCity(v); setRegion('') }} disabled={!province}>
                       <SelectTrigger><SelectValue placeholder={province ? 'انتخاب شهر...' : 'ابتدا استان را انتخاب کنید'} /></SelectTrigger>
                       <SelectContent className="max-h-72">
                         {getCitiesForProvince(province).map((c) => (
@@ -404,14 +406,17 @@ export function RequesterFlow() {
                     </Select>
                   </div>
                   <div>
-                    <Label>منطقه / محله (اختیاری)</Label>
-                    <Input
-                      value={region}
-                      onChange={(e) => setRegion(e.target.value)}
-                      placeholder="مثلاً: ولیعصر، شمال شهر..."
-                    />
+                    <Label>محله</Label>
+                    <Select value={region || undefined} onValueChange={setRegion} disabled={!city}>
+                      <SelectTrigger><SelectValue placeholder={city ? 'انتخاب محله...' : 'ابتدا شهر را انتخاب کنید'} /></SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {getNeighborhoodsForCity(city).map((n) => (
+                          <SelectItem key={n} value={n}>{n}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground mt-1">
-                      کمک می‌کند ارائه‌دهنده نزدیک‌تر به شما پیدا شود
+                      فقط ارائه‌دهندگانی که در این محله خدمت‌رسانی می‌کنند، درخواست شما را دریافت خواهند کرد.
                     </p>
                   </div>
                   <Button onClick={handleSelectLocation} className="w-full bg-teal-gradient" size="lg">
@@ -452,14 +457,6 @@ export function RequesterFlow() {
                     />
                   </div>
                   <div>
-                    <Label>آدرس دقیق (اختیاری)</Label>
-                    <Input
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="خیابان، کوچه، پلاک..."
-                    />
-                  </div>
-                  <div>
                     <Label>توضیحات نیاز</Label>
                     <Textarea
                       value={description}
@@ -467,6 +464,12 @@ export function RequesterFlow() {
                       placeholder="مثلاً: مادرم ۷۵ ساله است و نیاز به تزریق انسولین دارد..."
                       rows={4}
                     />
+                  </div>
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-xs text-muted-foreground flex items-start gap-2">
+                    <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-primary">توجه:</strong> آدرس دقیق را پس از انتخاب ارائه‌دهنده در چت با او به اشتراک بگذارید.
+                    </div>
                   </div>
                   <Button
                     onClick={handleSubmitRequest}
@@ -559,7 +562,7 @@ function ServiceSummary({ serviceType, province, city, region }: {
       <div className="font-bold text-primary mb-1">{s.label}</div>
       <div className="flex items-center gap-1 text-muted-foreground">
         <MapPin className="w-3 h-3" />
-        {province} - {city}{region && ` - ${region}`}
+        {province} - {city}{region && ` - محله ${region}`}
       </div>
     </div>
   )

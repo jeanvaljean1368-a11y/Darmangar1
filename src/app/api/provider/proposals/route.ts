@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { getProviderFromRequest } from '@/lib/auth'
 import { ok, unauthorized, bad } from '@/lib/http'
-import { MAX_PROPOSALS_PER_REQUEST, PROPOSAL_FEE } from '@/lib/constants'
+import { MAX_PROPOSALS_PER_REQUEST, PROPOSAL_FEE, parseServedNeighborhoods } from '@/lib/constants'
 import { notifyNewProposal } from '@/lib/ws-broadcast'
 
 export const runtime = 'nodejs'
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
         serviceType: true,
         province: true,
         city: true,
+        servedNeighborhoods: true,
         freeProposalCount: true,
         proposalsSubmitted: true,
         walletBalance: true,
@@ -49,11 +50,19 @@ export async function POST(request: NextRequest) {
 
     if (!serviceRequest) return bad('درخواست یافت نشد')
 
-    // Validate match
+    // Validate match: province + city + serviceType + neighborhood
     if (serviceRequest.province !== fullProvider.province ||
         serviceRequest.city !== fullProvider.city ||
         serviceRequest.serviceType !== fullProvider.serviceType) {
       return bad('این درخواست با منطقه یا تخصص شما مطابقت ندارد')
+    }
+
+    // Validate neighborhood match: requester's neighborhood must be in provider's servedNeighborhoods
+    if (serviceRequest.neighborhood) {
+      const served = parseServedNeighborhoods(fullProvider.servedNeighborhoods)
+      if (!served.includes(serviceRequest.neighborhood)) {
+        return bad(`شما در محله «${serviceRequest.neighborhood}» سرویس‌دهی نمی‌کنید`)
+      }
     }
 
     // Check request status

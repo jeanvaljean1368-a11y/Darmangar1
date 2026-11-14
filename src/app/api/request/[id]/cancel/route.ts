@@ -27,7 +27,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       data: { status: 'CANCELLED' },
     })
 
-    const matchKey = `${serviceRequest.province}:${serviceRequest.city}:${serviceRequest.serviceType}`
+    const neighborhood = serviceRequest.neighborhood || ''
+    const matchKey = `${serviceRequest.province}:${serviceRequest.city}:${serviceRequest.serviceType}:${neighborhood}`
     closeRequestBroadcast(serviceRequest.id, matchKey, 'CANCELLED')
 
     return ok({ ok: true, message: 'درخواست لغو شد' })

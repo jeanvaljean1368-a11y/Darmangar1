@@ -84,9 +84,14 @@ io.on('connection', (socket: Socket) => {
     province: string
     city: string
     serviceType: string
+    servedNeighborhoods?: string[]
   }) => {
     const conn: ProviderConnection = {
-      ...data,
+      providerId: data.providerId,
+      username: data.username,
+      province: data.province,
+      city: data.city,
+      serviceType: data.serviceType,
       socketId: socket.id,
     }
     providers.set(data.providerId, conn)
@@ -95,9 +100,15 @@ io.on('connection', (socket: Socket) => {
     socket.join(`province:${data.province}`)
     socket.join(`city:${data.province}:${data.city}`)
     socket.join(`service:${data.serviceType}`)
-    // Combined room: providers in a specific city+serviceType
+    // Join a room for each served neighborhood — match key includes neighborhood
+    // Request broadcasts go to: match:${province}:${city}:${serviceType}:${neighborhood}
+    const neighborhoods = data.servedNeighborhoods || []
+    neighborhoods.forEach((n) => {
+      socket.join(`match:${data.province}:${data.city}:${data.serviceType}:${n}`)
+    })
+    // Also join a general match room (without neighborhood) for legacy/compat
     socket.join(`match:${data.province}:${data.city}:${data.serviceType}`)
-    log(`Provider joined: ${data.username} (province=${data.province}, city=${data.city}, service=${data.serviceType})`)
+    log(`Provider joined: ${data.username} (province=${data.province}, city=${data.city}, service=${data.serviceType}, neighborhoods=${neighborhoods.length})`)
     socket.emit('provider:joined', { ok: true })
     // Notify provider of pending active requests in their match room
     socket.emit('provider:status', {

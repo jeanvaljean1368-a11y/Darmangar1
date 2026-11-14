@@ -57,7 +57,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     })
 
     // Broadcast to other providers that request is closed
-    const matchKey = `${serviceRequest.province}:${serviceRequest.city}:${serviceRequest.serviceType}`
+    // matchKey includes neighborhood so only providers in that neighborhood receive it
+    const neighborhood = serviceRequest.neighborhood || ''
+    const matchKey = `${serviceRequest.province}:${serviceRequest.city}:${serviceRequest.serviceType}:${neighborhood}`
     closeRequestBroadcast(serviceRequest.id, matchKey, 'SELECTED')
 
     return ok({

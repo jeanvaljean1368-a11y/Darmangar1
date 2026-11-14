@@ -22,6 +22,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           province: true,
           city: true,
           region: true,
+          neighborhood: true,
           description: true,
           requesterName: true,
           requesterPhone: true,

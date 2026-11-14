@@ -31,10 +31,12 @@ model Provider {
   // Service specialty
   serviceType     ServiceType
   isWoundSpecialist Boolean @default(false)
-  // Location: province + region/area within the city
+  // Location: province + city + neighborhoods served (JSON array of neighborhood names)
   province        String
   city            String
   region          String?
+  // سرویس‌دهی در چند محله — به‌صورت JSON array مثلاً: '["ولعصر","جردن"]'
+  servedNeighborhoods String?
   // Status: PENDING (waiting admin approval), APPROVED, REJECTED
   status          ProviderStatus @default(PENDING)
   rejectionReason String?
@@ -91,6 +93,9 @@ model ServiceRequest {
   province      String
   city          String
   region        String?
+  // محله دقیق درخواست‌کننده — برای تطبیق با محله‌های ارائه‌دهنده
+  neighborhood  String?
+  // آدرس دقیق بعداً در چت تبادل می‌شود
   address       String?
   description   String
   // Status lifecycle

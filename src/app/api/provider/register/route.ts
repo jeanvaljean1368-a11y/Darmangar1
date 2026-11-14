@@ -25,7 +25,16 @@ export async function POST(request: NextRequest) {
     const isWoundSpecialist = formData.get('isWoundSpecialist') === 'true' || formData.get('isWoundSpecialist') === 'on'
     const province = (formData.get('province') as string)?.trim()
     const city = (formData.get('city') as string)?.trim()
-    const region = (formData.get('region') as string)?.trim() || null
+    const servedNeighborhoodsRaw = (formData.get('servedNeighborhoods') as string)?.trim() || '[]'
+    let servedNeighborhoods: string[] = []
+    try {
+      const parsed = JSON.parse(servedNeighborhoodsRaw)
+      if (Array.isArray(parsed)) {
+        servedNeighborhoods = parsed.filter((n) => typeof n === 'string' && n.trim().length > 0).map((n) => n.trim())
+      }
+    } catch {
+      // ignore parse error
+    }
     const referralCode = (formData.get('referralCode') as string)?.trim() || null
 
     // Validate required fields
@@ -38,6 +47,7 @@ export async function POST(request: NextRequest) {
     }
     if (!province) return bad('استان الزامی است')
     if (!city) return bad('شهر الزامی است')
+    if (servedNeighborhoods.length === 0) return bad('حداقل یک محله برای سرویس‌دهی انتخاب کنید')
 
     // Check unique fields
     const existingUser = await db.provider.findFirst({
@@ -112,7 +122,7 @@ export async function POST(request: NextRequest) {
         isWoundSpecialist: serviceType === 'WOUND_SPECIALIST' || isWoundSpecialist,
         province,
         city,
-        region,
+        servedNeighborhoods: JSON.stringify(servedNeighborhoods),
         referredById: referrerId,
         freeProposalCount,
         status: 'PENDING',

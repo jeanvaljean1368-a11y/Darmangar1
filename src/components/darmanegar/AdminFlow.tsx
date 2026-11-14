@@ -513,8 +513,33 @@ function AdminDashboard({ admin, onLogout, onBack }: {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <StatBox label="کل پیشنهادها" value={stats.counts.totalProposals} icon={<TrendingUp className="w-5 h-5" />} />
                   <StatBox label="تراکنش‌ها" value={stats.counts.totalPayments} icon={<Coins className="w-5 h-5" />} />
-                  <StatBox label="درآمد کل (تومان)" value={stats.counts.totalRevenue} icon={<Coins className="w-5 h-5" />} color="text-primary" />
+                  <StatBox label="صندوق سیستم (تومان)" value={stats.counts.totalRevenue} icon={<Coins className="w-5 h-5" />} color="text-primary" />
                 </div>
+
+                {/* System Fund Card - prominent display */}
+                <Card className="border-primary/40 bg-teal-gradient-soft">
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-teal-gradient flex items-center justify-center text-primary-foreground shrink-0">
+                      <Coins className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs text-muted-foreground">موجودی صندوق سیستم</div>
+                      <div className="text-2xl font-bold text-primary persian-nums">
+                        {stats.counts.totalRevenue.toLocaleString('fa-IR')}
+                        <span className="text-sm font-normal mr-1">تومان</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        حاصل از کسر ۸,۰۰۰ تومان به ازای هر پیشنهاد غیررایگان ارائه‌دهندگان
+                      </div>
+                    </div>
+                    <div className="text-left shrink-0">
+                      <div className="text-xs text-muted-foreground">تعداد تراکنش</div>
+                      <div className="text-lg font-bold persian-nums">
+                        {stats.counts.totalPayments.toLocaleString('fa-IR')}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 <Card className="border-primary/20">
                   <CardHeader>
@@ -598,11 +623,11 @@ function AdminDashboard({ admin, onLogout, onBack }: {
                   <div className="font-bold">{selectedProvider.proposalsSubmitted.toLocaleString('fa-IR')}</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">کیف پول:</div>
+                  <div className="text-muted-foreground">حساب مالی:</div>
                   <div className="font-bold">{selectedProvider.walletBalance.toLocaleString('fa-IR')} ت</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">کل پرداختی:</div>
+                  <div className="text-muted-foreground">واریز به صندوق:</div>
                   <div className="font-bold">{selectedProvider.totalPaid.toLocaleString('fa-IR')} ت</div>
                 </div>
                 <div>

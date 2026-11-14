@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
       freeRemaining: Math.max(0, (updatedProvider?.freeProposalCount || 0) - (updatedProvider?.proposalsSubmitted || 0)),
       provider: updatedProvider,
       message: fee > 0
-        ? `پیشنهاد ثبت شد. ${fee.toLocaleString('fa-IR')} تومان از کیف پول شما کسر شد.`
+        ? `پیشنهاد ثبت شد. ${fee.toLocaleString('fa-IR')} تومان از حساب شما کسر و به صندوق سیستم واریز شد.`
         : 'پیشنهاد ثبت شد (پیشنهاد رایگان).',
     })
   } catch (e: any) {

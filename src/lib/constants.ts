@@ -138,10 +138,13 @@ export function getCitiesForProvince(province: string): string[] {
 }
 
 // Pricing
-export const PROPOSAL_FEE = 15000 // Toman, charged after 5 free proposals
-export const FREE_PROPOSAL_LIMIT = 5
-export const FREE_PROPOSAL_WITH_REFERRAL = 7 // 5 + 2 extra for referred users
-export const REFERRAL_BONUS_PROPOSALS = 2
+// هزینه هر پیشنهاد پس از اتمام پیشنهادهای رایگان
+// مبلغ در زمان ارسال پیشنهاد از حساب ارائه‌دهنده کسر و به صندوق سیستم واریز می‌شود
+// ارتباطی به قبول شدن پیشنهاد توسط درخواست‌کننده ندارد
+export const PROPOSAL_FEE = 8000 // Toman, charged per proposal after free ones exhausted
+export const FREE_PROPOSAL_LIMIT = 5 // 5 پیشنهاد رایگان برای هر ارائه‌دهنده
+export const FREE_PROPOSAL_WITH_REFERRAL = 7 // 5 + 2 اضافه برای معرفی‌شده‌ها
+export const REFERRAL_BONUS_PROPOSALS = 2 // ۲ پیشنهاد رایگان به ازای هر معرفی
 export const REQUEST_VALIDITY_MINUTES = 20
 export const MAX_PROPOSALS_PER_REQUEST = 5
 

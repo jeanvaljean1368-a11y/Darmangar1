@@ -712,7 +712,7 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
           />
           <StatCard
             icon={<Wallet className="w-4 h-4" />}
-            label="کیف پول"
+            label="حساب مالی"
             value={`${provider.walletBalance.toLocaleString('fa-IR')}`}
             color={provider.walletBalance < 0 ? 'text-destructive' : 'text-foreground'}
           />
@@ -1005,17 +1005,25 @@ function RequestCard({ request, provider, onSubmitted }: {
 
               {/* Cost notice */}
               <div className={`rounded p-3 text-sm ${willCharge ? 'bg-amber-50 text-amber-800' : 'bg-primary/5 text-primary'}`}>
-                <div className="flex items-center gap-2">
-                  <Coins className="w-4 h-4" />
-                  {willCharge ? (
-                    <span>
-                      این پیشنهاد هزینه دارد: <strong>{PROPOSAL_FEE.toLocaleString('fa-IR')} تومان</strong>
-                    </span>
-                  ) : (
-                    <span>
-                      این پیشنهاد رایگان است — <strong>{freeRemaining.toLocaleString('fa-IR')}</strong> پیشنهاد رایگان باقی‌مانده
-                    </span>
-                  )}
+                <div className="flex items-start gap-2">
+                  <Coins className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    {willCharge ? (
+                      <>
+                        <div>
+                          این پیشنهاد هزینه دارد: <strong>{PROPOSAL_FEE.toLocaleString('fa-IR')} تومان</strong>
+                        </div>
+                        <div className="text-xs mt-1 opacity-90">
+                          مبلغ در زمان ارسال پیشنهاد از حساب شما کسر و به صندوق سیستم واریز می‌شود.
+                          ارتباطی به قبول شدن پیشنهاد توسط درخواست‌کننده ندارد.
+                        </div>
+                      </>
+                    ) : (
+                      <span>
+                        این پیشنهاد رایگان است — <strong>{freeRemaining.toLocaleString('fa-IR')}</strong> پیشنهاد رایگان باقی‌مانده
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -1,0 +1,53 @@
+{
+  "name": "درمانگر - پلتفرم خدمات سلامت ایران",
+  "short_name": "درمانگر",
+  "description": "اپلیکیشن هوشمند اتصال درخواست‌کنندگان خدمات سلامت به ارائه‌دهندگان معتبر در سراسر ایران",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0d9488",
+  "lang": "fa",
+  "dir": "rtl",
+  "categories": ["health", "medical", "lifestyle"],
+  "icons": [
+    {
+      "src": "/darmanegar-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/darmanegar-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/darmanegar-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/darmanegar-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "درخواست خدمات سلامت",
+      "short_name": "درخواست",
+      "url": "/?view=requester",
+      "icons": [{ "src": "/darmanegar-logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "ورود ارائه‌دهنده",
+      "short_name": "ارائه‌دهنده",
+      "url": "/?view=provider",
+      "icons": [{ "src": "/darmanegar-logo.png", "sizes": "96x96" }]
+    }
+  ]
+}

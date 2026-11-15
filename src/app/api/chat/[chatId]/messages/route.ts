@@ -70,10 +70,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         // Don't expose requester phone to requester themselves (they know it)
         requesterPhone: isProvider ? chat.request.requesterPhone : undefined,
       },
+      serviceStatus: chat.serviceStatus,
+      completedAt: chat.completedAt,
+      completedBy: chat.completedBy,
       messages: chat.messages.map((m) => ({
         id: m.id,
         sender: m.sender,
         content: m.content,
+        messageType: m.messageType,
+        attachmentUrl: m.attachmentUrl,
+        latitude: m.latitude,
+        longitude: m.longitude,
         createdAt: m.createdAt,
         readAt: m.readAt,
       })),

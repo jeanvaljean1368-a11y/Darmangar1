@@ -55,10 +55,13 @@ export async function GET(request: NextRequest) {
       city: full.city,
       region: full.region,
       profilePhoto: full.profilePhoto,
+      bio: full.bio,
       freeProposalCount: full.freeProposalCount,
       proposalsSubmitted: full.proposalsSubmitted,
       walletBalance: full.walletBalance,
       totalPaid: full.totalPaid,
+      totalEarnings: full.totalEarnings,
+      servicesCompleted: full.servicesCompleted,
       referralCode: full.referralCode,
       isWoundSpecialist: full.isWoundSpecialist,
       documents: full.documents.map((d) => ({

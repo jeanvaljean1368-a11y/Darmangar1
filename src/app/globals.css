@@ -1,3 +1,4 @@
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -172,4 +173,15 @@
 /* Persian number input */
 .persian-num {
   font-variant-numeric: lining-nums;
+}
+
+/* Leaflet map styles */
+.leaflet-container {
+  font-family: var(--font-vazirmatn), sans-serif !important;
+  z-index: 1;
+}
+
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
 }

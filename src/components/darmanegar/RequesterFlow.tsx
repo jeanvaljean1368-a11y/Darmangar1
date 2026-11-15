@@ -19,11 +19,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   ArrowRight, ArrowLeft, Syringe, Heart, Bandage, Hand, Activity,
   MapPin, Clock, User, Phone, CheckCircle2, MessageCircle, XCircle,
-  Loader2, RefreshCw, Home as HomeIcon, Info
+  Loader2, RefreshCw, Home as HomeIcon, Info, Siren
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { SERVICE_TYPES, IRAN_PROVINCES, getCitiesForProvince, getNeighborhoodsForCity } from '@/lib/constants'
+import { LeafletMapPicker } from './LeafletMapPicker'
 import { getSocket } from '@/lib/ws-client'
 import type { ServiceType } from '@prisma/client'
 
@@ -76,6 +77,9 @@ export function RequesterFlow() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [description, setDescription] = useState('')
+  const [isEmergency, setIsEmergency] = useState(false)
+  const [latitude, setLatitude] = useState<number | null>(null)
+  const [longitude, setLongitude] = useState<number | null>(null)
 
   // Request state
   const [requestInfo, setRequestInfo] = useState<RequestInfo | null>(null)
@@ -118,6 +122,9 @@ export function RequesterFlow() {
           city,
           neighborhood: region, // محله انتخاب‌شده
           description: description.trim(),
+          isEmergency,
+          latitude,
+          longitude,
         }),
       })
       const data = await res.json()
@@ -465,6 +472,50 @@ export function RequesterFlow() {
                       rows={4}
                     />
                   </div>
+
+                  {/* Emergency toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setIsEmergency((v) => !v)}
+                    className={`w-full text-right p-3 rounded-lg border-2 transition-all flex items-start gap-3 ${
+                      isEmergency
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-muted hover:border-red-300 bg-background'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                      isEmergency ? 'bg-red-500 text-white' : 'bg-red-50 text-red-500'
+                    }`}>
+                      <Siren className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">درخواست اورژانسی</span>
+                        {isEmergency && <Badge className="bg-red-500 text-white text-[10px]">فعال</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        مهلت کوتاه‌تر (۱۰ دقیقه به جای ۲۰)، اولویت بالاتر و برچسب قرمز برای ارائه‌دهندگان
+                      </div>
+                    </div>
+                    <div className={`w-11 h-6 rounded-full p-1 transition-colors shrink-0 ${
+                      isEmergency ? 'bg-red-500' : 'bg-muted'
+                    }`}>
+                      <div className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                        isEmergency ? 'translate-x-0' : '-translate-x-5'
+                      }`} />
+                    </div>
+                  </button>
+
+                  {/* Map for location */}
+                  <div>
+                    <Label>موقعیت روی نقشه (اختیاری)</Label>
+                    <LeafletMapPicker
+                      latitude={latitude}
+                      longitude={longitude}
+                      onChange={(lat, lng) => { setLatitude(lat); setLongitude(lng) }}
+                    />
+                  </div>
+
                   <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-xs text-muted-foreground flex items-start gap-2">
                     <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     <div>

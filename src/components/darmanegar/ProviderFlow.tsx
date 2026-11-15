@@ -22,7 +22,8 @@ import { Separator } from '@/components/ui/separator'
 import {
   ArrowRight, LogOut, Stethoscope, FileText, Wallet, Users, Clock,
   Inbox, Send, MessageCircle, UserCircle, CheckCircle2, XCircle,
-  Loader2, Coins, Gift, MapPin, Phone, RefreshCw, Eye, Upload, Home as HomeIcon
+  Loader2, Coins, Gift, MapPin, Phone, RefreshCw, Eye, Upload, Home as HomeIcon,
+  BarChart3, TrendingUp, Calendar, Star, CreditCard
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -45,10 +46,13 @@ interface ProviderData {
   city: string
   region: string | null
   profilePhoto: string | null
+  bio?: string | null
   freeProposalCount: number
   proposalsSubmitted: number
   walletBalance: number
   totalPaid: number
+  totalEarnings?: number
+  servicesCompleted?: number
   referralCode: string
   isWoundSpecialist: boolean
   documents: { id: string; type: DocumentType; fileUrl: string; fileName: string; verified: boolean }[]
@@ -811,7 +815,7 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
 
         {isApproved ? (
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid grid-cols-3 mb-4">
+            <TabsList className="grid grid-cols-5 mb-4">
               <TabsTrigger value="requests" className="text-xs">
                 <Inbox className="w-3.5 h-3.5 ml-1" />
                 درخواست‌ها
@@ -823,11 +827,19 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
               </TabsTrigger>
               <TabsTrigger value="proposals" className="text-xs">
                 <Send className="w-3.5 h-3.5 ml-1" />
-                پیشنهادهای من
+                پیشنهادها
               </TabsTrigger>
               <TabsTrigger value="chats" className="text-xs">
                 <MessageCircle className="w-3.5 h-3.5 ml-1" />
                 چت‌ها
+              </TabsTrigger>
+              <TabsTrigger value="wallet" className="text-xs">
+                <Wallet className="w-3.5 h-3.5 ml-1" />
+                کیف پول
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="text-xs">
+                <BarChart3 className="w-3.5 h-3.5 ml-1" />
+                آمار
               </TabsTrigger>
             </TabsList>
 
@@ -894,6 +906,14 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
             <TabsContent value="chats" className="space-y-3">
               <ProviderChatsTab provider={provider} onOpenChat={onOpenChat} />
             </TabsContent>
+
+            <TabsContent value="wallet" className="space-y-3">
+              <ProviderWalletTab provider={provider} />
+            </TabsContent>
+
+            <TabsContent value="stats" className="space-y-3">
+              <ProviderStatsTab provider={provider} />
+            </TabsContent>
           </Tabs>
         ) : (
           <Card className="border-dashed">
@@ -936,6 +956,477 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
         </Card>
       </main>
     </div>
+  )
+}
+
+// ============== Wallet Tab ==============
+function ProviderWalletTab({ provider }: { provider: ProviderData }) {
+  const [wallet, setWallet] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [topupAmount, setTopupAmount] = useState('')
+  const [topupLoading, setTopupLoading] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/provider/wallet', { credentials: 'include' })
+        const data = await res.json()
+        if (active && data.wallet) setWallet(data.wallet)
+      } catch {}
+      finally { if (active) setLoading(false) }
+    })()
+    return () => { active = false }
+  }, [])
+
+  const handleTopup = async () => {
+    const amount = Number(toEnglishDigits(topupAmount).replace(/[^0-9]/g, ''))
+    if (!amount || amount < 1000) return toast.error('مبلغ باید حداقل ۱,۰۰۰ تومان باشد')
+    setTopupLoading(true)
+    try {
+      const res = await fetch('/api/provider/wallet/topup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ amount }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+      // Redirect to payment gateway (or mock auto-approves)
+      if (data.redirectUrl) {
+        toast.success('در حال انتقال به درگاه پرداخت...')
+        // For mock: redirect to mock-success URL (auto-completes)
+        // For real: redirect to Zarinpal/IdPay
+        if (data.redirectUrl.startsWith('/')) {
+          // Internal URL (mock)
+          window.location.href = data.redirectUrl
+        } else {
+          window.location.href = data.redirectUrl
+        }
+      }
+    } catch {
+      toast.error('خطا در ایجاد درخواست پرداخت')
+    } finally {
+      setTopupLoading(false)
+    }
+  }
+
+  if (loading) {
+    return <div className="text-center py-8"><Loader2 className="w-6 h-6 mx-auto animate-spin text-primary" /></div>
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Balance card */}
+      <Card className="border-primary/30 bg-teal-gradient-soft">
+        <CardContent className="p-4">
+          <div className="text-xs text-muted-foreground">موجودی فعلی حساب</div>
+          <div className={`text-3xl font-bold mt-1 ${wallet?.balance < 0 ? 'text-destructive' : 'text-primary'}`}>
+            {(wallet?.balance || 0).toLocaleString('fa-IR')}
+            <span className="text-sm font-normal mr-1">تومان</span>
+          </div>
+          {wallet?.balance < 0 && (
+            <div className="text-xs text-destructive mt-2 bg-red-50 rounded p-2">
+              حساب شما منفی است. برای ادامه ارسال پیشنهاد، کیف پول خود را شارژ کنید.
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+            <div>
+              <div className="text-muted-foreground">کل شارژ شده</div>
+              <div className="font-bold">{(wallet?.totalPaid || 0).toLocaleString('fa-IR')} ت</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">کل درآمد خدمات</div>
+              <div className="font-bold">{(wallet?.totalEarnings || 0).toLocaleString('fa-IR')} ت</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Top up */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-primary" />
+            شارژ کیف پول
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label>مبلغ شارژ (تومان)</Label>
+            <Input
+              value={topupAmount}
+              onChange={(e) => setTopupAmount(e.target.value)}
+              placeholder="مثلاً: ۵۰,۰۰۰"
+              inputMode="numeric"
+              dir="ltr"
+              className="text-right"
+            />
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[50000, 100000, 200000, 500000].map((amt) => (
+              <Button
+                key={amt}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => setTopupAmount(amt.toLocaleString('fa-IR'))}
+              >
+                {amt.toLocaleString('fa-IR')}
+              </Button>
+            ))}
+          </div>
+          <Button
+            onClick={handleTopup}
+            disabled={topupLoading}
+            className="w-full bg-teal-gradient"
+          >
+            {topupLoading ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" /> در حال ایجاد...</> : 'پرداخت و شارژ'}
+          </Button>
+          <p className="text-[10px] text-muted-foreground text-center">
+            در حالت توسعه، پرداخت به‌صورت خودکار تأیید می‌شود. در محیط واقعی به درگاه پرداخت منتقل می‌شوید.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Transactions */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-sm">تراکنش‌های اخیر</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!wallet?.transactions || wallet.transactions.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-4">هنوز تراکنشی ثبت نشده است</div>
+          ) : (
+            <div className="space-y-2">
+              {wallet.transactions.map((t: any) => (
+                <div key={t.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                  <div>
+                    <div className="font-medium">{t.description}</div>
+                    <div className="text-xs text-muted-foreground">{new Date(t.createdAt).toLocaleString('fa-IR')}</div>
+                  </div>
+                  <div className={`font-bold ${t.amount > 0 ? 'text-green-600' : 'text-destructive'}`}>
+                    {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString('fa-IR')} ت
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ============== Stats Tab ==============
+function ProviderStatsTab({ provider }: { provider: ProviderData }) {
+  const [stats, setStats] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        // Use admin stats endpoint via provider — actually we need a dedicated provider stats endpoint
+        // For now, fetch proposals & ratings
+        const [propRes, meRes] = await Promise.all([
+          fetch('/api/provider/requests', { credentials: 'include' }),
+          fetch('/api/provider/me', { credentials: 'include' }),
+        ])
+        const propData = await propRes.json()
+        const meData = await meRes.json()
+        if (active) {
+          setStats({
+            myProposals: propData.myProposals || [],
+            provider: meData.provider,
+          })
+        }
+      } catch {}
+      finally { if (active) setLoading(false) }
+    })()
+    return () => { active = false }
+  }, [])
+
+  if (loading) {
+    return <div className="text-center py-8"><Loader2 className="w-6 h-6 mx-auto animate-spin text-primary" /></div>
+  }
+
+  const totalProposals = stats?.myProposals?.length || 0
+  const acceptedProposals = stats?.myProposals?.filter((p: any) => p.request.status === 'SELECTED' || p.request.status === 'COMPLETED').length || 0
+  const completedProposals = stats?.myProposals?.filter((p: any) => p.request.status === 'COMPLETED').length || 0
+  const totalEarnings = stats?.myProposals
+    ?.filter((p: any) => p.request.status === 'COMPLETED')
+    .reduce((sum: number, p: any) => sum + p.price, 0) || 0
+  const acceptanceRate = totalProposals > 0 ? Math.round((acceptedProposals / totalProposals) * 100) : 0
+
+  return (
+    <div className="space-y-3">
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatBox label="کل پیشنهادها" value={totalProposals.toLocaleString('fa-IR')} icon={<Send className="w-5 h-5" />} />
+        <StatBox label="پیشنهادهای پذیرفته‌شده" value={acceptedProposals.toLocaleString('fa-IR')} icon={<CheckCircle2 className="w-5 h-5" />} color="text-green-600" />
+        <StatBox label="خدمات انجام‌شده" value={completedProposals.toLocaleString('fa-IR')} icon={<TrendingUp className="w-5 h-5" />} color="text-primary" />
+        <StatBox label="نرخ موفقیت" value={`${acceptanceRate.toLocaleString('fa-IR')}٪`} icon={<BarChart3 className="w-5 h-5" />} color="text-amber-600" />
+      </div>
+
+      {/* Earnings */}
+      <Card className="border-primary/30 bg-teal-gradient-soft">
+        <CardContent className="p-4">
+          <div className="text-xs text-muted-foreground">درآمد کل از خدمات انجام‌شده</div>
+          <div className="text-3xl font-bold text-primary mt-1">
+            {totalEarnings.toLocaleString('fa-IR')}
+            <span className="text-sm font-normal mr-1">تومان</span>
+          </div>
+          <div className="text-xs text-muted-foreground mt-2">
+            میانگین به ازای هر خدمت: {completedProposals > 0 ? Math.round(totalEarnings / completedProposals).toLocaleString('fa-IR') : '۰'} تومان
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Working Hours */}
+      <WorkingHoursEditor providerId={provider.id} />
+
+      {/* Bio editor */}
+      <BioEditor provider={provider} />
+
+      {/* Recent proposals */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-sm">آخرین پیشنهادها</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!stats?.myProposals || stats.myProposals.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-4">هنوز پیشنهادی ثبت نکرده‌اید</div>
+          ) : (
+            <div className="space-y-2">
+              {stats.myProposals.slice(0, 5).map((p: any) => (
+                <div key={p.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium truncate">{p.request.description}</div>
+                    <div className="text-xs text-muted-foreground">{new Date(p.createdAt).toLocaleDateString('fa-IR')}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-primary">{p.price.toLocaleString('fa-IR')} ت</span>
+                    <RequestStatusBadge status={p.request.status} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// Working hours editor
+function WorkingHoursEditor({ providerId }: { providerId: string }) {
+  const [hours, setHours] = useState<{ dayOfWeek: number; fromHour: number; toHour: number }[]>([])
+  const [savedHours, setSavedHours] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/provider/working-hours', { credentials: 'include' })
+        const data = await res.json()
+        if (active && data.hours) {
+          setSavedHours(data.hours)
+          // Initialize editable hours from saved data
+          const initial = data.hours.map((h: any) => ({
+            dayOfWeek: h.dayOfWeek,
+            fromHour: h.fromHour,
+            toHour: h.toHour,
+          }))
+          setHours(initial)
+        }
+      } catch {}
+      finally { if (active) setLoading(false) }
+    })()
+    return () => { active = false }
+  }, [])
+
+  const days = [
+    { value: 0, label: 'شنبه' },
+    { value: 1, label: 'یکشنبه' },
+    { value: 2, label: 'دوشنبه' },
+    { value: 3, label: 'سه‌شنبه' },
+    { value: 4, label: 'چهارشنبه' },
+    { value: 5, label: 'پنجشنبه' },
+    { value: 6, label: 'جمعه' },
+  ]
+
+  const toggleDay = (day: number) => {
+    if (hours.some((h) => h.dayOfWeek === day)) {
+      setHours(hours.filter((h) => h.dayOfWeek !== day))
+    } else {
+      setHours([...hours, { dayOfWeek: day, fromHour: 8, toHour: 20 }])
+    }
+  }
+
+  const updateTime = (day: number, field: 'fromHour' | 'toHour', value: number) => {
+    setHours(hours.map((h) => h.dayOfWeek === day ? { ...h, [field]: value } : h))
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/provider/working-hours', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ hours }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+      toast.success('ساعات کاری ذخیره شد')
+      setSavedHours(data.hours || [])
+    } catch {
+      toast.error('خطا در ذخیره')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return null
+
+  return (
+    <Card className="border-primary/20">
+      <CardHeader>
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-primary" />
+          ساعات کاری
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p className="text-xs text-muted-foreground">
+          درخواست‌ها فقط در ساعات کاری شما به‌صورت real-time نمایش داده می‌شوند. (درخواست‌های اورژانسی همیشه نمایش داده می‌شوند.)
+        </p>
+        {days.map((d) => {
+          const active = hours.some((h) => h.dayOfWeek === d.value)
+          const dayHours = hours.find((h) => h.dayOfWeek === d.value)
+          return (
+            <div key={d.value} className="flex items-center gap-2 text-sm">
+              <button
+                type="button"
+                onClick={() => toggleDay(d.value)}
+                className={`w-24 text-right py-1 px-2 rounded text-xs font-medium ${
+                  active ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                {d.label}
+              </button>
+              {active && dayHours ? (
+                <div className="flex items-center gap-1">
+                  <select
+                    value={dayHours.fromHour}
+                    onChange={(e) => updateTime(d.value, 'fromHour', Number(e.target.value))}
+                    className="border rounded px-1 py-0.5 text-xs"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => i).map((h) => (
+                      <option key={h} value={h}>{h.toLocaleString('fa-IR')}:۰۰</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-muted-foreground">تا</span>
+                  <select
+                    value={dayHours.toHour}
+                    onChange={(e) => updateTime(d.value, 'toHour', Number(e.target.value))}
+                    className="border rounded px-1 py-0.5 text-xs"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
+                      <option key={h} value={h}>{h.toLocaleString('fa-IR')}:۰۰</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <span className="text-xs text-muted-foreground">تعطیل</span>
+              )}
+            </div>
+          )
+        })}
+        <Button onClick={handleSave} disabled={saving} size="sm" className="w-full mt-3 bg-teal-gradient">
+          {saving ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" /> در حال ذخیره...</> : 'ذخیره ساعات کاری'}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Bio editor
+function BioEditor({ provider }: { provider: ProviderData }) {
+  const [bio, setBio] = useState(provider.bio || '')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (bio.length > 500) return toast.error('معرفی نباید بیشتر از ۵۰۰ کاراکتر باشد')
+    setSaving(true)
+    try {
+      const res = await fetch('/api/provider/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bio }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+      toast.success('معرفی ذخیره شد')
+    } catch {
+      toast.error('خطا در ذخیره')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card className="border-primary/20">
+      <CardHeader>
+        <CardTitle className="text-sm">معرفی کوتاه</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Textarea
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          placeholder="مثلاً: پرستار رسمی با ۱۵ سال سابقه در مراقبت از سالمندان و تزریقات..."
+          rows={3}
+          maxLength={500}
+        />
+        <div className="text-xs text-muted-foreground text-left">
+          {bio.length.toLocaleString('fa-IR')} / ۵۰۰ کاراکتر
+        </div>
+        <Button onClick={handleSave} disabled={saving} size="sm" className="w-full bg-teal-gradient">
+          {saving ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" /> در حال ذخیره...</> : 'ذخیره معرفی'}
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Helper for StatBox
+function StatBox({ label, value, icon, color = '' }: {
+  label: string
+  value: string
+  icon: React.ReactNode
+  color?: string
+}) {
+  return (
+    <Card className="border-primary/15">
+      <CardContent className="p-3 text-center">
+        <div className={`flex justify-center mb-1 ${color}`}>{icon}</div>
+        <div className={`text-xl font-bold ${color}`}>{value}</div>
+        <div className="text-[10px] text-muted-foreground">{label}</div>
+      </CardContent>
+    </Card>
   )
 }
 

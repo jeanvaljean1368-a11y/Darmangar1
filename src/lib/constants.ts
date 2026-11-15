@@ -263,7 +263,9 @@ export const FREE_PROPOSAL_LIMIT = 5 // 5 پیشنهاد رایگان برای �
 export const FREE_PROPOSAL_WITH_REFERRAL = 7 // 5 + 2 اضافه برای معرفی‌شده‌ها
 export const REFERRAL_BONUS_PROPOSALS = 2 // ۲ پیشنهاد رایگان به ازای هر معرفی
 export const REQUEST_VALIDITY_MINUTES = 20
+export const EMERGENCY_VALIDITY_MINUTES = 10 // اورژانسی: مهلت کوتاه‌تر
 export const MAX_PROPOSALS_PER_REQUEST = 5
+export const MAX_EMERGENCY_PROPOSALS = 7 // اورژانسی: امکان پیشنهاد بیشتر
 
 // Admin credentials (default)
 export const DEFAULT_ADMIN = {

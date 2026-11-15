@@ -3,7 +3,7 @@
 
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useViewStore } from '@/stores/useViewStore'
 import { Logo, LogoWithText } from './Logo'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   ArrowRight, LogOut, ShieldCheck, Users, Inbox, BarChart3, Loader2,
-  CheckCircle2, XCircle, Clock, MapPin, FileText, Eye, Coins, TrendingUp
+  CheckCircle2, XCircle, Clock, MapPin, FileText, Eye, Coins, TrendingUp,
+  MessageCircle, RefreshCw
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -321,7 +322,7 @@ function AdminDashboard({ admin, onLogout, onBack }: {
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-4">
         <Tabs defaultValue="providers">
-          <TabsList className="grid grid-cols-3 mb-4">
+          <TabsList className="grid grid-cols-5 mb-4">
             <TabsTrigger value="providers">
               <Users className="w-4 h-4 ml-1" />
               ارائه‌دهندگان
@@ -336,6 +337,14 @@ function AdminDashboard({ admin, onLogout, onBack }: {
             <TabsTrigger value="stats">
               <BarChart3 className="w-4 h-4 ml-1" />
               آمار
+            </TabsTrigger>
+            <TabsTrigger value="revenue">
+              <Coins className="w-4 h-4 ml-1" />
+              درآمد
+            </TabsTrigger>
+            <TabsTrigger value="sms">
+              <MessageCircle className="w-4 h-4 ml-1" />
+              SMS
             </TabsTrigger>
           </TabsList>
 
@@ -581,6 +590,16 @@ function AdminDashboard({ admin, onLogout, onBack }: {
               </>
             )}
           </TabsContent>
+
+          {/* === Revenue Tab === */}
+          <TabsContent value="revenue" className="space-y-3">
+            <RevenueTab />
+          </TabsContent>
+
+          {/* === SMS Tab === */}
+          <TabsContent value="sms" className="space-y-3">
+            <SMSTab />
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -756,4 +775,180 @@ function StatBox({ label, value, icon, color = '' }: {
 function getServiceLabel(s: ServiceType): string {
   const found = SERVICE_TYPES.find((x) => x.value === s)
   return found?.label || s
+}
+
+// === Revenue Tab ===
+function RevenueTab() {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/revenue', { credentials: 'include' })
+        const d = await res.json()
+        if (active && !d.error) setData(d)
+      } catch {}
+      finally { if (active) setLoading(false) }
+    })()
+    return () => { active = false }
+  }, [])
+
+  if (loading) return <div className="text-center py-8"><Loader2 className="w-6 h-6 mx-auto animate-spin text-primary" /></div>
+  if (!data) return <div className="text-center py-8 text-muted-foreground">داده‌ای موجود نیست</div>
+
+  return (
+    <div className="space-y-3">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatBox label="درآمد کارمزد" value={data.summary.totalRevenue.toLocaleString('fa-IR')} icon={<Coins className="w-5 h-5" />} color="text-primary" />
+        <StatBox label="شارژ کیف پول‌ها" value={data.summary.totalTopups.toLocaleString('fa-IR')} icon={<Coins className="w-5 h-5" />} color="text-green-600" />
+        <StatBox label="پرداخت خدمات" value={data.summary.totalServicePayments.toLocaleString('fa-IR')} icon={<TrendingUp className="w-5 h-5" />} />
+        <StatBox label="تعداد تراکنش" value={data.summary.totalTransactions.toLocaleString('fa-IR')} icon={<Coins className="w-5 h-5" />} />
+      </div>
+
+      {/* Daily revenue chart (text-based) */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-sm">درآمد ۷ روز اخیر</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {data.daily?.map((d: any) => (
+              <div key={d.date} className="flex items-center gap-3">
+                <div className="text-xs text-muted-foreground w-24">{new Date(d.date).toLocaleDateString('fa-IR', { weekday: 'short', day: 'numeric' })}</div>
+                <div className="flex-1 h-6 bg-muted rounded overflow-hidden relative">
+                  <div
+                    className="h-full bg-teal-gradient"
+                    style={{ width: `${Math.min(100, (d.revenue / Math.max(...data.daily.map((x: any) => x.revenue || 1))) * 100)}%` }}
+                  />
+                </div>
+                <div className="text-xs font-bold w-24 text-left">
+                  {d.revenue > 0 ? d.revenue.toLocaleString('fa-IR') + ' ت' : '-'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent transactions */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-sm">تراکنش‌های اخیر</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!data.recentTransactions || data.recentTransactions.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-4">تراکنشی ثبت نشده است</div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {data.recentTransactions.map((t: any) => (
+                <div key={t.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium truncate">{t.description || t.type}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t.provider?.firstName} {t.provider?.lastName} • {new Date(t.createdAt).toLocaleString('fa-IR')}
+                    </div>
+                  </div>
+                  <div className={`font-bold ${t.amount > 0 ? 'text-green-600' : 'text-destructive'}`}>
+                    {t.amount > 0 ? '+' : ''}{t.amount.toLocaleString('fa-IR')} ت
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// === SMS Tab ===
+function SMSTab() {
+  const [sms, setSms] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const loadSMS = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/sms?limit=50', { credentials: 'include' })
+      const data = await res.json()
+      if (data.sms) setSms(data.sms)
+    } catch {}
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => {
+    loadSMS()
+  }, [loadSMS])
+
+  if (loading) return <div className="text-center py-8"><Loader2 className="w-6 h-6 mx-auto animate-spin text-primary" /></div>
+
+  const sentCount = sms.filter((s) => s.status === 'sent').length
+  const mockCount = sms.filter((s) => s.status === 'mock').length
+  const failedCount = sms.filter((s) => s.status === 'failed').length
+
+  return (
+    <div className="space-y-3">
+      {/* SMS stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatBox label="ارسال موفق" value={sentCount.toLocaleString('fa-IR')} icon={<MessageCircle className="w-5 h-5" />} color="text-green-600" />
+        <StatBox label="حالت تست" value={mockCount.toLocaleString('fa-IR')} icon={<MessageCircle className="w-5 h-5" />} color="text-amber-600" />
+        <StatBox label="ناموفق" value={failedCount.toLocaleString('fa-IR')} icon={<XCircle className="w-5 h-5" />} color="text-red-600" />
+      </div>
+
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center justify-between">
+            <span>آخرین SMS‌های ارسالی</span>
+            <Button size="sm" variant="ghost" onClick={loadSMS}>
+              <RefreshCw className="w-3.5 h-3.5 ml-1" />
+              به‌روزرسانی
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {sms.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-4">هنوز پیامکی ارسال نشده است</div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {sms.map((s) => (
+                <div key={s.id} className="text-sm border-b pb-2 last:border-0">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">
+                      به: <span dir="ltr">{s.to}</span>
+                    </div>
+                    <Badge className={`text-[10px] ${
+                      s.status === 'sent' ? 'bg-green-100 text-green-700' :
+                      s.status === 'mock' ? 'bg-amber-100 text-amber-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>{s.status === 'sent' ? 'ارسال شد' : s.status === 'mock' ? 'تستی' : 'ناموفق'}</Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{s.message.substring(0, 100)}...</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {s.provider ? `${s.provider.firstName} ${s.provider.lastName}` : 'درخواست‌کننده'} • {new Date(s.createdAt).toLocaleString('fa-IR')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="pt-4 text-sm">
+          <div className="font-bold mb-2">پیکربندی SMS</div>
+          <p className="text-xs text-muted-foreground">
+            در حالت توسعه، SMS‌ها به‌صورت «تستی» ثبت می‌شوند و ارسال واقعی نمی‌شوند.
+            برای فعال‌سازی ارسال واقعی، متغیرهای محیطی زیر را تنظیم کنید:
+          </p>
+          <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc list-inside">
+            <li><code dir="ltr">SMS_PROVIDER=kavenegar|farazsms</code></li>
+            <li><code dir="ltr">KAVENEGAR_API_KEY=کلید-API</code></li>
+            <li><code dir="ltr">SMS_FROM=شماره-فرستنده</code></li>
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
+  )
 }

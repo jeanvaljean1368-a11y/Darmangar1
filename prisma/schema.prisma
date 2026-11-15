@@ -28,6 +28,7 @@ model Provider {
   username        String   @unique
   password        String
   profilePhoto    String?
+  bio             String?  // معرفی کوتاه توسط ارائه‌دهنده
   // Service specialty
   serviceType     ServiceType
   isWoundSpecialist Boolean @default(false)
@@ -49,6 +50,8 @@ model Provider {
   // Wallet / earnings tracking
   walletBalance   Int      @default(0) // in Toman
   totalPaid       Int      @default(0) // in Toman
+  totalEarnings   Int      @default(0) // درآمد کل از خدمات (مستقل از کارمزد)
+  servicesCompleted Int    @default(0) // تعداد خدمات انجام‌شده
   // Timestamps
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -58,10 +61,13 @@ model Provider {
   proposals       Proposal[]
   chatsAsProvider Chat[]
   payments        Payment[]
+  workingHours    WorkingHours[]
+  ratingsReceived Rating[]   // امتیازهای دریافتی از درخواست‌کنندگان
   referredBy      Provider? @relation("ReferralRelation", fields: [referredById], references: [id])
   referrals       Provider[] @relation("ReferralRelation")
   receivedRequests ReceivedRequest[]
   selectedForRequests ServiceRequest[]
+  walletTransactions WalletTransaction[]
 
   @@index([province, city, serviceType, status])
   @@index([status])
@@ -82,6 +88,22 @@ model ProviderDocument {
   @@index([providerId, type])
 }
 
+// ===== Working Hours (provider's available days/hours) =====
+// هر رکورد یک بازه کاری در یک روز هفته است
+model WorkingHours {
+  id          String   @id @default(cuid())
+  providerId  String
+  dayOfWeek   Int      // 0=شنبه، 1=یکشنبه، ... 6=جمعه
+  fromHour    Int      // 0-23
+  toHour      Int      // 1-24
+  // اگه همه روزها فعال نیست، برای درخواست‌های اورژانسی نادیده گرفته میشه
+  isActive    Boolean  @default(true)
+
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, dayOfWeek])
+}
+
 // ===== Service Request (from requester, no registration needed) =====
 model ServiceRequest {
   id            String   @id @default(cuid())
@@ -98,11 +120,17 @@ model ServiceRequest {
   // آدرس دقیق بعداً در چت تبادل می‌شود
   address       String?
   description   String
+  // اورژانسی بودن درخواست
+  isEmergency   Boolean  @default(false)
+  // مختصات جغرافیایی برای نقشه (اختیاری)
+  latitude      Float?
+  longitude     Float?
   // Status lifecycle
   status        RequestStatus @default(ACTIVE)
-  // Timing: 20-minute validity
+  // Timing: 20-minute validity (10 min for emergencies)
   createdAt     DateTime @default(now())
   expiresAt     DateTime
+  completedAt   DateTime?
   selectedProviderId String?
   // Token for anonymous requester to access their request (chat etc.)
   requesterToken String @unique @default(cuid())
@@ -112,10 +140,12 @@ model ServiceRequest {
   chat          Chat?
   selectedProvider Provider? @relation(fields: [selectedProviderId], references: [id])
   receivedBy    ReceivedRequest[]
+  ratings       Rating[]
 
   @@index([province, city, serviceType, status])
   @@index([status])
   @@index([expiresAt])
+  @@index([isEmergency])
 }
 
 // Record of which providers received/were notified about a request
@@ -124,6 +154,7 @@ model ReceivedRequest {
   requestId   String
   providerId  String
   notified    Boolean  @default(true)
+  smsSent     Boolean  @default(false) // آیا SMS هم ارسال شد
   responded   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
@@ -141,6 +172,10 @@ model Proposal {
   providerId  String
   price       Int      // in Toman
   message     String?
+  // پیشنهاد برای درخواست اورژانسی
+  isEmergencyResponse Boolean @default(false)
+  // مدت زمان تخمینی رسیدن (دقیقه)
+  estimatedArrivalMin Int?
   createdAt   DateTime @default(now())
 
   request     ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
@@ -157,12 +192,17 @@ model Chat {
   providerId  String
   // We use the requester token to identify the anonymous requester
   createdAt   DateTime @default(now())
+  // وضعیت خدمت
+  serviceStatus ChatServiceStatus @default(ONGOING)
+  completedAt   DateTime?
+  completedBy   String? // REQUESTER or PROVIDER
 
   request     ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
   provider    Provider       @relation(fields: [providerId], references: [id], onDelete: Cascade)
   messages    ChatMessage[]
 
   @@index([providerId])
+  @@index([serviceStatus])
 }
 
 model ChatMessage {
@@ -170,8 +210,14 @@ model ChatMessage {
   chatId      String
   sender      MessageSender // REQUESTER or PROVIDER
   content     String
-  createdAt   DateTime @default(now())
-  readAt      DateTime?
+  // نوع پیام: TEXT, IMAGE, LOCATION (نقشه), SYSTEM
+  messageType MessageType @default(TEXT)
+  // برای پیام‌های LOCATION: مختصات
+  attachmentUrl String?   // برای تصاویر
+  latitude     Float?
+  longitude    Float?
+  createdAt    DateTime @default(now())
+  readAt       DateTime?
 
   chat        Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
@@ -183,14 +229,72 @@ model Payment {
   id          String   @id @default(cuid())
   providerId  String
   amount      Int      // in Toman
-  type        PaymentType // PROPOSAL_FEE
+  type        PaymentType // PROPOSAL_FEE, WALLET_TOPUP, SERVICE_PAYMENT
   proposalId  String?
+  // برای تراکنش‌های درگاه پرداخت
+  gateway     String?  // ZARINPAL, MOCK, ...
+  trackingCode String? // کد پیگیری درگاه
   description String?
+  status      PaymentStatus @default(COMPLETED)
   createdAt   DateTime @default(now())
 
   provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@index([providerId])
+  @@index([status])
+}
+
+// ===== Wallet Transaction (شارژ کیف پول و کسرها) =====
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  providerId  String
+  amount      Int      // مثبت = شارژ، منفی = کسر
+  type        WalletTxType
+  balance     Int      // موجودی بعد از تراکنش
+  description String?
+  paymentId   String?  // اگه مرتبط با Payment باشه
+  createdAt   DateTime @default(now())
+
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, createdAt])
+}
+
+// ===== Rating (after service completion — requester rates provider) =====
+model Rating {
+  id          String   @id @default(cuid())
+  // ارائه‌دهنده‌ای که امتیاز گرفته
+  providerId  String
+  // درخواستی که امتیاز براش ثبت شده
+  requestId   String
+  // امتیاز ۱ تا ۵ ستاره
+  stars       Int      // 1-5
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  provider    Provider       @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  request     ServiceRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, providerId]) // یک امتیاز برای هر درخواست
+  @@index([providerId])
+}
+
+// ===== SMS Log (برای پیگیری SMS‌های ارسال‌شده) =====
+model SMSLog {
+  id          String   @id @default(cuid())
+  to          String   // شماره موبایل
+  message     String
+  type        SMSType  // NEW_REQUEST, REQUEST_SELECTED, etc.
+  providerId  String?
+  requestId   String?
+  status      String   // sent, failed, mock
+  gateway     String?  // kavenegar, farazsms, mock
+  cost        Int      @default(0) // هزینه به ریال
+  createdAt   DateTime @default(now())
+
+  @@index([providerId])
+  @@index([requestId])
+  @@index([createdAt])
 }
 
 // ===== Enums =====
@@ -233,8 +337,47 @@ enum MessageSender {
   SYSTEM
 }
 
+enum MessageType {
+  TEXT
+  IMAGE
+  LOCATION
+  SYSTEM
+}
+
 enum PaymentType {
   PROPOSAL_FEE
+  WALLET_TOPUP
+  SERVICE_PAYMENT
   REFERRAL_BONUS
   REFUND
+}
+
+enum PaymentStatus {
+  PENDING     // در انتظار پرداخت
+  COMPLETED   // تکمیل‌شده
+  FAILED      // ناموفق
+}
+
+enum WalletTxType {
+  TOPUP           // شارژ از درگاه
+  PROPOSAL_FEE    // کسر هزینه پیشنهاد
+  SERVICE_PAYMENT // پرداخت به ارائه‌دهنده
+  REFUND          // بازگشت وجه
+  REFERRAL_BONUS  // پاداش معرفی
+}
+
+enum ChatServiceStatus {
+  ONGOING     // در حال انجام
+  COMPLETED   // تکمیل‌شده
+  CANCELLED   // لغو شده
+}
+
+enum SMSType {
+  NEW_REQUEST         // درخواست جدید برای ارائه‌دهنده
+  REQUEST_SELECTED    // درخواست‌کننده شما را انتخاب کرد
+  REQUEST_EXPIRED     // مهلت درخواست به پایان رسید
+  SERVICE_COMPLETED   // خدمت تکمیل شد
+  WALLET_TOPUP        // شارژ کیف پول
+  PROPOSAL_RECEIVED   // ارائه‌دهنده به درخواست شما پیشنهاد داد
+  GENERIC             // عمومی
 }

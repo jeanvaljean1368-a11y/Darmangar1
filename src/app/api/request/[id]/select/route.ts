@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { ok, bad, notFound } from '@/lib/http'
 import { closeRequestBroadcast } from '@/lib/ws-broadcast'
+import { notifyRequestSelected } from '@/lib/notification'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -57,10 +58,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     })
 
     // Broadcast to other providers that request is closed
-    // matchKey includes neighborhood so only providers in that neighborhood receive it
     const neighborhood = serviceRequest.neighborhood || ''
     const matchKey = `${serviceRequest.province}:${serviceRequest.city}:${serviceRequest.serviceType}:${neighborhood}`
     closeRequestBroadcast(serviceRequest.id, matchKey, 'SELECTED')
+
+    // Send in-app notification to the selected provider
+    await notifyRequestSelected(proposal.providerId, {
+      requestId: serviceRequest.id,
+      requesterName: serviceRequest.requesterName,
+      price: proposal.price,
+    }).catch(() => {})
 
     return ok({
       ok: true,

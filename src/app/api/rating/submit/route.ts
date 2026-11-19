@@ -2,6 +2,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { ok, bad, notFound } from '@/lib/http'
+import { notifyNewRating } from '@/lib/notification'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -51,7 +52,13 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Update provider's servicesCompleted counter is already set; let's also update aggregate
+    // Send in-app notification to provider about new rating
+    await notifyNewRating(serviceRequest.selectedProviderId, {
+      requestId: serviceRequest.id,
+      stars,
+      comment: comment || undefined,
+    }).catch(() => {})
+
     return ok({
       ok: true,
       rating: {

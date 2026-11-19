@@ -6,6 +6,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useViewStore } from '@/stores/useViewStore'
 import { Logo } from './Logo'
+import { NotificationsBell } from './NotificationsBell'
 import { ChatPanel } from './ChatPanel'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -751,6 +752,7 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
               {provider.province} - {provider.city}
             </div>
           </div>
+          <NotificationsBell />
           <Button variant="ghost" size="icon" onClick={onLogout}>
             <LogOut className="w-5 h-5" />
           </Button>

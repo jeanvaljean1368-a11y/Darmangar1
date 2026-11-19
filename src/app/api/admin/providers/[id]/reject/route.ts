@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { getAdminFromRequest } from '@/lib/auth'
 import { ok, unauthorized, bad, notFound } from '@/lib/http'
+import { notifyDocumentRejected } from '@/lib/notification'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,6 +27,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       rejectionReason: reason,
     },
   })
+
+  // Send in-app notification to provider
+  await notifyDocumentRejected(id, reason).catch(() => {})
 
   return ok({ ok: true, message: 'ارائه‌دهنده رد شد' })
 }

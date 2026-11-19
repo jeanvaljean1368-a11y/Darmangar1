@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { getProviderFromRequest } from '@/lib/auth'
 import { ok, unauthorized, bad, notFound } from '@/lib/http'
-import { sendSMS, templateServiceCompleted } from '@/lib/sms'
+import { notifyServiceCompleted } from '@/lib/notification'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -96,13 +96,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       },
     })
 
-    // Send SMS to requester about service completion (so they can rate)
-    await sendSMS(
-      chat.request.requesterPhone,
-      templateServiceCompleted({ providerName: `${chat.provider.firstName} ${chat.provider.lastName}` }),
-      'SERVICE_COMPLETED',
-      { providerId: chat.providerId, requestId: chat.request.id }
-    )
+    // Send in-app notification to provider (when requester completes)
+    if (completedBy === 'REQUESTER') {
+      await notifyServiceCompleted(chat.providerId, {
+        requestId: chat.request.id,
+        completedBy,
+      }).catch(() => {})
+    }
 
     return ok({
       ok: true,

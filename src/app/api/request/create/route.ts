@@ -1,7 +1,7 @@
 // POST /api/request/create
 // Requester creates a new service request (no registration needed)
 // درخواست فقط به ارائه‌دهندگانی که در محله انتخاب‌شده سرویس‌دهی دارند ارسال می‌شود
-// پشتیبانی از درخواست‌های اورژانسی و SMS notification
+// نوتیفیکیشن از طریق اپ (درون‌برنامه‌ای) به ارائه‌دهندگان ارسال می‌شود
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { ok, bad, isValidPhone, toEnglishDigits } from '@/lib/http'
@@ -15,7 +15,7 @@ import {
 } from '@/lib/constants'
 import { ServiceType } from '@prisma/client'
 import { broadcastNewRequest } from '@/lib/ws-broadcast'
-import { sendBulkSMS, templateNewRequest } from '@/lib/sms'
+import { createNotificationsBulk } from '@/lib/notification'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -117,30 +117,29 @@ export async function POST(request: NextRequest) {
       matchKey,
     })
 
-    // Send SMS to matching providers (broadcast new request notification)
-    // We don't have provider's phone in the candidates query — fetch separately
+    // Send IN-APP NOTIFICATIONS to matching providers (replaces SMS)
+    // این اعلان‌ها در اپ به ارائه‌دهنده‌ها نمایش داده می‌شوند، نه SMS
     if (matchingProviders.length > 0) {
-      const providerIds = matchingProviders.map((p) => p.id)
-      const providersWithPhone = await db.provider.findMany({
-        where: { id: { in: providerIds } },
-        select: { id: true, firstName: true, lastName: true },
-      })
-      // We need phone for SMS but it's not stored on Provider yet in many cases — let's fetch from a separate user table
-      // Actually phone isn't on Provider — requester's phone is. For SMS to provider we need provider phone.
-      // For now: skip SMS to provider (no phone field on Provider). Use a TODO note.
-      // Actually, we don't have provider phone in the schema. SMS will work once added.
-      // Send SMS to requester instead confirming their request
       const serviceLabel = SERVICE_TYPES.find((s) => s.value === serviceType)?.label || serviceType
-      const smsMessage = isEmergency
-        ? `درمانگر\nدرخواست اورژانسی شما ثبت شد.\nخدمت: ${serviceLabel}\nمحله: ${neighborhood}\nمهلت: ${validityMin} دقیقه\nدر انتظار پیشنهاد ارائه‌دهندگان...`
-        : `درمانگر\nدرخواست شما ثبت شد.\nخدمت: ${serviceLabel}\nمحله: ${neighborhood}\nمهلت: ${validityMin} دقیقه\nدر انتظار پیشنهاد ارائه‌دهندگان...`
-      // We send a confirmation SMS to requester
-      await sendBulkSMS(
-        [{ phone: requesterPhone }],
-        smsMessage,
-        'GENERIC',
-        serviceRequest.id
-      ).catch(() => {}) // don't fail if SMS fails
+      await createNotificationsBulk(
+        matchingProviders.map((p) => ({ providerId: p.id })),
+        {
+          type: 'NEW_REQUEST',
+          title: isEmergency
+            ? `🚨 درخواست اورژانسی جدید: ${serviceLabel}`
+            : `درخواست جدید: ${serviceLabel}`,
+          message: `محله: ${neighborhood}\n${description.substring(0, 120)}\nمهلت پاسخ: ${validityMin} دقیقه`,
+          requestId: serviceRequest.id,
+          actionUrl: `/api/provider/requests`,
+          metadata: {
+            serviceType,
+            serviceLabel,
+            neighborhood,
+            isEmergency,
+            validityMin,
+          },
+        }
+      ).catch((e) => console.error('Notification creation error:', e))
     }
 
     return ok({
@@ -172,6 +171,3 @@ export async function POST(request: NextRequest) {
     return bad(`خطا در ثبت درخواست: ${e.message || 'نامشخص'}`, 500)
   }
 }
-
-// Import sendBulkSMS
-import { sendBulkSMS as _sendBulkSMS } from '@/lib/sms'

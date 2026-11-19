@@ -68,9 +68,38 @@ model Provider {
   receivedRequests ReceivedRequest[]
   selectedForRequests ServiceRequest[]
   walletTransactions WalletTransaction[]
+  notifications       Notification[]
 
   @@index([province, city, serviceType, status])
   @@index([status])
+}
+
+// ===== Notification (in-app notification for providers) =====
+// نوتیفیکیشن درون‌برنامه‌ای — جایگزین SMS برای ارائه‌دهندگان
+model Notification {
+  id          String   @id @default(cuid())
+  providerId  String
+  // نوع نوتیفیکیشن
+  type        NotificationType
+  // عنوان کوتاه
+  title       String
+  // متن کامل
+  message     String
+  // آیا خوانده شده
+  read        Boolean  @default(false)
+  readAt      DateTime?
+  // مرجع مرتبط (مثلاً requestId)
+  requestId   String?
+  // اکشن پیشنهادی (مثلاً "برو به درخواست")
+  actionUrl   String?
+  // داده‌های اضافی به‌صورت JSON
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, read, createdAt])
+  @@index([providerId, createdAt])
 }
 
 // Documents uploaded by provider during registration
@@ -379,5 +408,18 @@ enum SMSType {
   SERVICE_COMPLETED   // خدمت تکمیل شد
   WALLET_TOPUP        // شارژ کیف پول
   PROPOSAL_RECEIVED   // ارائه‌دهنده به درخواست شما پیشنهاد داد
+  GENERIC             // عمومی
+}
+
+enum NotificationType {
+  NEW_REQUEST         // درخواست جدید منطبق با تخصص و محله شما
+  REQUEST_SELECTED    // درخواست‌کننده شما را انتخاب کرد
+  REQUEST_EXPIRED     // مهلت درخواست به پایان رسید
+  SERVICE_COMPLETED   // خدمت تکمیل شد
+  WALLET_LOW          // موجودی کیف پول کم است
+  WALLET_TOPUP        // کیف پول شارژ شد
+  DOCUMENT_VERIFIED   // مدارک شما تأیید شد
+  DOCUMENT_REJECTED   // مدارک شما رد شد
+  NEW_RATING          // امتیاز جدید دریافت کردید
   GENERIC             // عمومی
 }

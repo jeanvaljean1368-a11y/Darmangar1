@@ -2,7 +2,8 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { getAdminFromRequest } from '@/lib/auth'
-import { ok, unauthorized, bad, notFound } from '@/lib/http'
+import { ok, unauthorized, notFound } from '@/lib/http'
+import { notifyDocumentVerified } from '@/lib/notification'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,5 +31,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     },
   })
 
+  // Send in-app notification to provider
+  await notifyDocumentVerified(id).catch(() => {})
+
   return ok({ ok: true, message: 'ارائه‌دهنده تأیید شد' })
 }
+

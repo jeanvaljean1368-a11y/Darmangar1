@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   ArrowRight, LogOut, ShieldCheck, Users, Inbox, BarChart3, Loader2,
   CheckCircle2, XCircle, Clock, MapPin, FileText, Eye, Coins, TrendingUp,
-  MessageCircle, RefreshCw
+  MessageCircle, RefreshCw, Bell
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -342,9 +342,9 @@ function AdminDashboard({ admin, onLogout, onBack }: {
               <Coins className="w-4 h-4 ml-1" />
               درآمد
             </TabsTrigger>
-            <TabsTrigger value="sms">
-              <MessageCircle className="w-4 h-4 ml-1" />
-              SMS
+            <TabsTrigger value="notifications">
+              <Bell className="w-4 h-4 ml-1" />
+              اعلان‌ها
             </TabsTrigger>
           </TabsList>
 
@@ -596,9 +596,9 @@ function AdminDashboard({ admin, onLogout, onBack }: {
             <RevenueTab />
           </TabsContent>
 
-          {/* === SMS Tab === */}
-          <TabsContent value="sms" className="space-y-3">
-            <SMSTab />
+          {/* === Notifications Tab === */}
+          <TabsContent value="notifications" className="space-y-3">
+            <NotificationsTab />
           </TabsContent>
         </Tabs>
       </main>
@@ -866,67 +866,93 @@ function RevenueTab() {
 
 // === SMS Tab ===
 function SMSTab() {
-  const [sms, setSms] = useState<any[]>([])
+  // kept for backward compatibility but not used in UI
+  return null
+}
+
+// === Notifications Tab ===
+function NotificationsTab() {
+  const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  const loadSMS = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/sms?limit=50', { credentials: 'include' })
-      const data = await res.json()
-      if (data.sms) setSms(data.sms)
+      const res = await fetch('/api/admin/notifications?limit=50', { credentials: 'include' })
+      const d = await res.json()
+      if (!d.error) setData(d)
     } catch {}
     finally { setLoading(false) }
   }, [])
 
   useEffect(() => {
-    loadSMS()
-  }, [loadSMS])
+    loadData()
+  }, [loadData])
 
   if (loading) return <div className="text-center py-8"><Loader2 className="w-6 h-6 mx-auto animate-spin text-primary" /></div>
+  if (!data) return <div className="text-center py-8 text-muted-foreground">داده‌ای موجود نیست</div>
 
-  const sentCount = sms.filter((s) => s.status === 'sent').length
-  const mockCount = sms.filter((s) => s.status === 'mock').length
-  const failedCount = sms.filter((s) => s.status === 'failed').length
+  const stats = data.stats
+  const notifications = data.notifications || []
 
   return (
     <div className="space-y-3">
-      {/* SMS stats */}
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <StatBox label="ارسال موفق" value={sentCount.toLocaleString('fa-IR')} icon={<MessageCircle className="w-5 h-5" />} color="text-green-600" />
-        <StatBox label="حالت تست" value={mockCount.toLocaleString('fa-IR')} icon={<MessageCircle className="w-5 h-5" />} color="text-amber-600" />
-        <StatBox label="ناموفق" value={failedCount.toLocaleString('fa-IR')} icon={<XCircle className="w-5 h-5" />} color="text-red-600" />
+        <StatBox label="کل اعلان‌ها" value={stats.total.toLocaleString('fa-IR')} icon={<Bell className="w-5 h-5" />} color="text-primary" />
+        <StatBox label="خوانده‌شده" value={stats.read.toLocaleString('fa-IR')} icon={<CheckCircle2 className="w-5 h-5" />} color="text-green-600" />
+        <StatBox label="خوانده‌نشده" value={stats.unread.toLocaleString('fa-IR')} icon={<Bell className="w-5 h-5" />} color="text-amber-600" />
       </div>
 
+      {/* By type */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-sm">توزیع اعلان‌ها بر اساس نوع</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats.byType && stats.byType.length > 0 ? (
+            <div className="space-y-2">
+              {stats.byType.map((t: any) => (
+                <div key={t.type} className="flex items-center justify-between text-sm">
+                  <span>{getNotificationTypeLabel(t.type)}</span>
+                  <Badge variant="secondary">{t._count.toLocaleString('fa-IR')}</Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-muted-foreground text-sm py-4">داده‌ای موجود نیست</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent notifications */}
       <Card className="border-primary/20">
         <CardHeader>
           <CardTitle className="text-sm flex items-center justify-between">
-            <span>آخرین SMS‌های ارسالی</span>
-            <Button size="sm" variant="ghost" onClick={loadSMS}>
+            <span>آخرین اعلان‌های ارسالی</span>
+            <Button size="sm" variant="ghost" onClick={loadData}>
               <RefreshCw className="w-3.5 h-3.5 ml-1" />
               به‌روزرسانی
             </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {sms.length === 0 ? (
-            <div className="text-center text-muted-foreground text-sm py-4">هنوز پیامکی ارسال نشده است</div>
+          {notifications.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-4">هنوز اعلانی ثبت نشده است</div>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {sms.map((s) => (
-                <div key={s.id} className="text-sm border-b pb-2 last:border-0">
+              {notifications.map((n: any) => (
+                <div key={n.id} className="text-sm border-b pb-2 last:border-0">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium">
-                      به: <span dir="ltr">{s.to}</span>
-                    </div>
-                    <Badge className={`text-[10px] ${
-                      s.status === 'sent' ? 'bg-green-100 text-green-700' :
-                      s.status === 'mock' ? 'bg-amber-100 text-amber-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>{s.status === 'sent' ? 'ارسال شد' : s.status === 'mock' ? 'تستی' : 'ناموفق'}</Badge>
+                    <div className="font-medium">{n.title}</div>
+                    {!n.read ? (
+                      <Badge className="text-[10px] bg-amber-100 text-amber-700">جدید</Badge>
+                    ) : (
+                      <Badge className="text-[10px] bg-muted text-muted-foreground">خوانده‌شده</Badge>
+                    )}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">{s.message.substring(0, 100)}...</div>
+                  <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{n.message.substring(0, 100)}...</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {s.provider ? `${s.provider.firstName} ${s.provider.lastName}` : 'درخواست‌کننده'} • {new Date(s.createdAt).toLocaleString('fa-IR')}
+                    به: {n.provider ? `${n.provider.firstName} ${n.provider.lastName}` : '—'} • {new Date(n.createdAt).toLocaleString('fa-IR')}
                   </div>
                 </div>
               ))}
@@ -937,18 +963,33 @@ function SMSTab() {
 
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="pt-4 text-sm">
-          <div className="font-bold mb-2">پیکربندی SMS</div>
+          <div className="font-bold mb-2 flex items-center gap-2">
+            <Bell className="w-4 h-4 text-primary" />
+            سیستم اعلان درون‌برنامه‌ای
+          </div>
           <p className="text-xs text-muted-foreground">
-            در حالت توسعه، SMS‌ها به‌صورت «تستی» ثبت می‌شوند و ارسال واقعی نمی‌شوند.
-            برای فعال‌سازی ارسال واقعی، متغیرهای محیطی زیر را تنظیم کنید:
+            در درمانگر، اعلان‌ها به‌صورت درون‌برنامه‌ای به ارائه‌دهندگان نمایش داده می‌شوند.
+            هنگام ورود به اپ، یک زنگوله با شمارنده اعلان‌های خوانده‌نشده در گوشه‌ی بالا نمایش داده می‌شود.
+            این سیستم جایگزین SMS است و نیاز به سیم‌کارت یا درگاه SMS ندارد.
           </p>
-          <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc list-inside">
-            <li><code dir="ltr">SMS_PROVIDER=kavenegar|farazsms</code></li>
-            <li><code dir="ltr">KAVENEGAR_API_KEY=کلید-API</code></li>
-            <li><code dir="ltr">SMS_FROM=شماره-فرستنده</code></li>
-          </ul>
         </CardContent>
       </Card>
     </div>
   )
+}
+
+function getNotificationTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    NEW_REQUEST: 'درخواست جدید',
+    REQUEST_SELECTED: 'انتخاب ارائه‌دهنده',
+    REQUEST_EXPIRED: 'منقضی شدن درخواست',
+    SERVICE_COMPLETED: 'تکمیل خدمت',
+    WALLET_LOW: 'موجودی کم',
+    WALLET_TOPUP: 'شارژ کیف پول',
+    DOCUMENT_VERIFIED: 'تأیید مدارک',
+    DOCUMENT_REJECTED: 'رد مدارک',
+    NEW_RATING: 'امتیاز جدید',
+    GENERIC: 'عمومی',
+  }
+  return labels[type] || type
 }

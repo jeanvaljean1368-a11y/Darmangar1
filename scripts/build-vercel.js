@@ -2,7 +2,6 @@
 // اگر در محیط production هستیم (DATABASE_URL به postgresql اشاره می‌کند)
 // schema.prisma را به postgresql تغییر می‌دهد
 
-/* eslint-disable @typescript-eslint/no-require-imports */
 import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'

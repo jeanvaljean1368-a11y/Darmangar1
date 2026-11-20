@@ -2,10 +2,14 @@
 // اگر در محیط production هستیم (DATABASE_URL به postgresql اشاره می‌کند)
 // schema.prisma را به postgresql تغییر می‌دهد
 
-const fs = require('fs')
-const path = require('path')
+/* eslint-disable @typescript-eslint/no-require-imports */
+import { readFileSync, writeFileSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+import { execSync } from 'child_process'
 
-const schemaPath = path.join(__dirname, '..', 'prisma', 'schema.prisma')
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const schemaPath = join(__dirname, '..', 'prisma', 'schema.prisma')
 const databaseUrl = process.env.DATABASE_URL || ''
 
 console.log('[build-vercel] DATABASE_URL prefix:', databaseUrl.split(':')[0] || '(not set)')
@@ -13,9 +17,9 @@ console.log('[build-vercel] DATABASE_URL prefix:', databaseUrl.split(':')[0] || 
 // اگر DATABASE_URL به postgresql اشاره می‌کند، schema را به postgresql تغییر بده
 if (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')) {
   console.log('[build-vercel] PostgreSQL detected — switching schema to postgresql')
-  let schema = fs.readFileSync(schemaPath, 'utf-8')
+  let schema = readFileSync(schemaPath, 'utf-8')
   schema = schema.replace('provider = "sqlite"', 'provider = "postgresql"')
-  fs.writeFileSync(schemaPath, schema)
+  writeFileSync(schemaPath, schema)
   console.log('[build-vercel] ✅ schema.prisma updated to postgresql')
 } else if (databaseUrl.startsWith('file:')) {
   console.log('[build-vercel] SQLite detected — keeping schema as sqlite')
@@ -30,7 +34,6 @@ if (databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres:
 
 // تولید Prisma Client
 console.log('[build-vercel] Generating Prisma Client...')
-const { execSync } = require('child_process')
 try {
   execSync('bun run db:generate', { stdio: 'inherit' })
   console.log('[build-vercel] ✅ Prisma Client generated')

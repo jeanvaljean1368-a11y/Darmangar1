@@ -1,0 +1,95 @@
+# درمانگر - Docker Compose
+# اجرای کامل اپلیکیشن با PostgreSQL + Nginx + Next.js + WebSocket
+
+version: '3.8'
+
+services:
+  # ===== PostgreSQL Database =====
+  db:
+    image: postgres:16-alpine
+    container_name: darmanegar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-darmanegar}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-this-password}
+      POSTGRES_DB: ${DB_NAME:-darmanegar}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "5432:5432"  # در production این رو کامنت کنید
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-darmanegar}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - darmanegar-network
+
+  # ===== درمانگر App (Next.js + WebSocket) =====
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: darmanegar-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${DB_USER:-darmanegar}:${DB_PASSWORD:-change-this-password}@db:5432/${DB_NAME:-darmanegar}?schema=public
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-long-random-string}
+      # SMS (اختیاری - سیستم اعلان درون‌برنامه‌ای استفاده می‌شود)
+      SMS_PROVIDER: mock
+      # Payment
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
+      ZARINPAL_MERCHANT_ID: ${ZARINPAL_MERCHANT_ID:-}
+      PAYMENT_CALLBACK_URL: ${PAYMENT_CALLBACK_URL:-http://localhost}
+      # Admin
+      DEFAULT_ADMIN_USERNAME: ${DEFAULT_ADMIN_USERNAME:-admin}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-darmanegar1403}
+      # App
+      NODE_ENV: production
+      PORT: 3000
+      WS_PORT: 3003
+    volumes:
+      - app_uploads:/app/public/uploads
+      - app_db:/app/db
+    ports:
+      - "3000:3000"
+      - "3003:3003"
+    networks:
+      - darmanegar-network
+
+  # ===== Nginx Reverse Proxy =====
+  nginx:
+    image: nginx:alpine
+    container_name: darmanegar-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - nginx_logs:/var/log/nginx
+      - nginx_certs:/etc/nginx/certs
+      - nginx_letsencrypt:/etc/letsencrypt
+    networks:
+      - darmanegar-network
+
+volumes:
+  postgres_data:
+  app_uploads:
+  app_db:
+  nginx_logs:
+  nginx_certs:
+  nginx_letsencrypt:
+
+networks:
+  darmanegar-network:
+    driver: bridge

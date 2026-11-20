@@ -1,14 +1,23 @@
 // File upload utilities for درمانگر app
-// Saves files to /public/uploads/ and returns the relative URL
+// Detects environment:
+// - On Vercel (with BLOB_READ_WRITE_TOKEN): uses Vercel Blob storage
+// - In dev/standalone: saves to local /public/uploads/
 
 import { promises as fs } from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
+import { put } from '@vercel/blob'
 
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads')
 const PUBLIC_PREFIX = '/uploads'
 
+// Check if we're on Vercel production
+function isVercelProduction(): boolean {
+  return !!process.env.BLOB_READ_WRITE_TOKEN && process.env.NODE_ENV === 'production'
+}
+
 export async function ensureUploadDir(): Promise<void> {
+  if (isVercelProduction()) return // Vercel Blob handles this
   try {
     await fs.mkdir(UPLOAD_DIR, { recursive: true })
   } catch {
@@ -25,6 +34,42 @@ export interface SavedFile {
 export async function saveFile(
   file: File | { name: string; type: string; arrayBuffer: () => Promise<ArrayBuffer> },
   subfolder = ''
+): Promise<SavedFile> {
+  // On Vercel production: use Vercel Blob
+  if (isVercelProduction()) {
+    return await saveToVercelBlob(file, subfolder)
+  }
+  // In dev: save to local filesystem
+  return await saveToLocal(file, subfolder)
+}
+
+// Save to Vercel Blob storage
+async function saveToVercelBlob(
+  file: File | { name: string; type: string; arrayBuffer: () => Promise<ArrayBuffer> },
+  subfolder: string
+): Promise<SavedFile> {
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const ext = path.extname(file.name) || '.png'
+  const safeName = `${randomUUID()}${ext}`
+  const pathname = subfolder ? `darmanegar/${subfolder}/${safeName}` : `darmanegar/${safeName}`
+
+  const blob = await put(pathname, buffer, {
+    access: 'public',
+    contentType: file.type || 'image/png',
+    addRandomSuffix: false,
+  })
+
+  return {
+    url: blob.url, // full Vercel Blob URL
+    fileName: file.name,
+    filePath: blob.url,
+  }
+}
+
+// Save to local filesystem (dev mode)
+async function saveToLocal(
+  file: File | { name: string; type: string; arrayBuffer: () => Promise<ArrayBuffer> },
+  subfolder: string
 ): Promise<SavedFile> {
   await ensureUploadDir()
   const buffer = Buffer.from(await file.arrayBuffer())

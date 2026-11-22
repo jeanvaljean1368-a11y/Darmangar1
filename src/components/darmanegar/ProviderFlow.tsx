@@ -285,6 +285,7 @@ function ProviderRegister({ onBack, onRegistered }: {
   const [nationalId, setNationalId] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [serviceType, setServiceType] = useState<ServiceType | ''>('')
   const [province, setProvince] = useState('')
   const [city, setCity] = useState('')
@@ -301,6 +302,7 @@ function ProviderRegister({ onBack, onRegistered }: {
     if (!/^\d{10}$/.test(toEnglishDigits(nationalId))) return toast.error('کد ملی باید ۱۰ رقم باشد')
     if (!username || username.length < 4) return toast.error('نام کاربری باید حداقل ۴ کاراکتر باشد')
     if (!password || password.length < 6) return toast.error('رمز عبور باید حداقل ۶ کاراکتر باشد')
+    if (password !== confirmPassword) return toast.error('رمز عبور و تکرار آن یکسان نیستند')
     if (!serviceType) return toast.error('نوع خدمت را انتخاب کنید')
     if (!province || !city) return toast.error('استان و شهر را انتخاب کنید')
     if (neighborhoods.length === 0) return toast.error('حداقل یک محله برای سرویس‌دهی انتخاب کنید')
@@ -419,6 +421,34 @@ function ProviderRegister({ onBack, onRegistered }: {
                   dir="ltr"
                   className="text-right"
                 />
+              </div>
+              <div>
+                <Label>تکرار رمز عبور</Label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••"
+                  dir="ltr"
+                  className={`text-right ${
+                    confirmPassword.length > 0
+                      ? confirmPassword === password
+                        ? 'border-green-500'
+                        : 'border-red-500'
+                      : ''
+                  }`}
+                />
+                {confirmPassword.length > 0 && (
+                  <div className={`text-xs mt-1 flex items-center gap-1 ${
+                    confirmPassword === password ? 'text-green-600' : 'text-red-500'
+                  }`}>
+                    {confirmPassword === password ? (
+                      <><CheckCircle2 className="w-3 h-3" /> رمزها مطابقت دارند</>
+                    ) : (
+                      <><XCircle className="w-3 h-3" /> رمزها مطابقت ندارند</>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -619,7 +649,7 @@ function FileInput({ file, onChange, accept = '*' }: {
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   return (
-    <div>
+    <div className="relative">
       <input
         ref={inputRef}
         type="file"
@@ -632,17 +662,33 @@ function FileInput({ file, onChange, accept = '*' }: {
       />
       <Button
         type="button"
-        variant="outline"
+        variant={file ? "outline" : "outline"}
         onClick={() => inputRef.current?.click()}
-        className="w-full justify-start"
+        className={`w-full justify-start relative ${
+          file ? 'border-green-500 bg-green-50' : ''
+        }`}
       >
         <Upload className="w-4 h-4 ml-2" />
         {file ? (
-          <span className="truncate text-primary">{file.name} ({(file.size / 1024).toFixed(0)} KB)</span>
+          <>
+            <span className="truncate text-primary font-medium">{file.name}</span>
+            <span className="text-xs text-muted-foreground mr-1">({(file.size / 1024).toFixed(0)} KB)</span>
+          </>
         ) : (
           <span className="text-muted-foreground">انتخاب فایل...</span>
         )}
+        {file && (
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6 rounded-full bg-green-500 text-white">
+            <CheckCircle2 className="w-4 h-4" />
+          </span>
+        )}
       </Button>
+      {file && (
+        <div className="text-xs text-green-600 mt-1 flex items-center gap-1">
+          <CheckCircle2 className="w-3 h-3" />
+          فایل با موفقیت انتخاب شد — برای تغییر، دوباره کلیک کنید
+        </div>
+      )}
     </div>
   )
 }

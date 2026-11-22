@@ -32,10 +32,23 @@ export function clearCookieHeader(name: string): string {
   return `${name}=; Path=/; Max-Age=0; SameSite=Lax`
 }
 
-// Validate Iranian national ID
+// Validate Iranian national ID — با تشخیص کدهای ساختگی
 export function isValidNationalId(nationalId: string): boolean {
+  // باید دقیقاً ۱۰ رقم باشد
   if (!/^\d{10}$/.test(nationalId)) return false
+
   const digits = nationalId.split('').map(Number)
+
+  // رد کردن کدهای همه‌رقم‌یکسان (مثل ۱۱۱۱۱۱۱۱۱۱، ۲۲۲۲۲۲۲۲۲۲، ...)
+  const allSame = digits.every((d) => d === digits[0])
+  if (allSame) return false
+
+  // رد کردن کدهای با پیش‌شماره‌ی غیرمعتبر (۰۰۰ تا ۰۰۹ معمولاً نامعتبر)
+  // کد ملی ایرانی با ۳ رقم اول از ۰۰۱ شروع می‌شود و هر ۳ رقم یک استان را نشان می‌دهد
+  const prefix = parseInt(nationalId.substring(0, 3), 10)
+  if (prefix === 0) return false // 000 پیش‌شماره نامعتبر
+
+  // الگوریتم checksum استاندارد ایرانی
   const check = digits[9]
   let sum = 0
   for (let i = 0; i < 9; i++) {
@@ -43,7 +56,19 @@ export function isValidNationalId(nationalId: string): boolean {
   }
   const remainder = sum % 11
   const expected = remainder < 2 ? remainder : 11 - remainder
-  return expected === check
+
+  // بررسی checksum
+  if (expected !== check) return false
+
+  // رد کردن کدهای رایج ساختگی (شناسایی الگوهای متداول)
+  // کدهایی که الگوی 1234567890 یا 9876543210 دارند
+  const isSequential = nationalId === '1234567890' || nationalId === '9876543210' ||
+                       nationalId === '0123456789' || nationalId === '1111111111' ||
+                       nationalId === '0000000000' || nationalId === '9999999999' ||
+                       nationalId === '1234567891'
+  if (isSequential) return false
+
+  return true
 }
 
 // Validate Iranian phone

@@ -536,7 +536,7 @@ function ProviderRegister({ onBack, onRegistered }: {
                     <FileInput
                       file={docFiles[docType] || null}
                       onChange={(f) => setDocFiles((prev) => ({ ...prev, [docType]: f }))}
-                      accept="image/*"
+                      accept="image/*,application/pdf"
                     />
                   </div>
                 ))}

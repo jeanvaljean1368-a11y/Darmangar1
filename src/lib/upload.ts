@@ -137,14 +137,17 @@ async function saveAsBase64(
   }
 }
 
-// Validate file type and size
-export function validateFile(file: File, allowedTypes: string[] = ['image/'], maxSizeMB = 5): { ok: boolean; error?: string } {
-  const isValidType = allowedTypes.some((t) => file.type.startsWith(t))
+// Validate file type and size — پشتیبانی از تصویر و PDF
+export function validateFile(file: File, allowedTypes: string[] = ['image/', 'application/pdf'], maxSizeMB = 10): { ok: boolean; error?: string } {
+  const isValidType = allowedTypes.some((t) => file.type.startsWith(t) || file.type === t)
   if (!isValidType) {
-    return { ok: false, error: 'فرمت فایل مجاز نیست. فقط تصویر مجاز است.' }
+    return { ok: false, error: 'فرمت فایل مجاز نیست. فقط تصویر (JPG, PNG, ...) یا PDF مجاز است.' }
   }
   if (file.size > maxSizeMB * 1024 * 1024) {
-    return { ok: false, error: `حجم فایل نباید بیشتر از ${maxSizeMB} مگابایت باشد.` }
+    return { ok: false, error: `حجم فایل نباید بیشتر از ${maxSizeMB.toLocaleString('fa-IR')} مگابایت باشد.` }
+  }
+  if (file.size === 0) {
+    return { ok: false, error: 'فایل خالی است.' }
   }
   return { ok: true }
 }

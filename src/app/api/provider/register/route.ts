@@ -85,7 +85,13 @@ export async function POST(request: NextRequest) {
     }
     const photoCheck = validateFile(profilePhoto)
     if (!photoCheck.ok) return bad(photoCheck.error!)
-    const photoSaved = await saveFile(profilePhoto, 'profiles')
+    let photoSaved
+    try {
+      photoSaved = await saveFile(profilePhoto, 'profiles')
+    } catch (uploadErr: any) {
+      console.error('Profile photo upload error:', uploadErr)
+      return bad(`خطا در آپلود عکس پروفایل: ${uploadErr.message || 'خطای نامشخص'}. لطفاً دوباره تلاش کنید.`)
+    }
 
     // Validate and save each required document
     for (const docType of requiredDocs) {
@@ -95,7 +101,13 @@ export async function POST(request: NextRequest) {
       }
       const check = validateFile(file)
       if (!check.ok) return bad(check.error!)
-      const saved = await saveFile(file, 'documents')
+      let saved
+      try {
+        saved = await saveFile(file, 'documents')
+      } catch (uploadErr: any) {
+        console.error(`Document ${docType} upload error:`, uploadErr)
+        return bad(`خطا در آپلود ${DOCUMENT_LABELS[docType]}: ${uploadErr.message || 'خطای نامشخص'}. لطفاً دوباره تلاش کنید.`)
+      }
       uploadedDocs.push({
         type: docType,
         fileUrl: saved.url,

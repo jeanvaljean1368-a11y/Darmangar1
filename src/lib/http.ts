@@ -32,7 +32,7 @@ export function clearCookieHeader(name: string): string {
   return `${name}=; Path=/; Max-Age=0; SameSite=Lax`
 }
 
-// Validate Iranian national ID — با تشخیص کدهای ساختگی
+// Validate Iranian national ID — با تشخیص کدهای ساختگی و سوری
 export function isValidNationalId(nationalId: string): boolean {
   // باید دقیقاً ۱۰ رقم باشد
   if (!/^\d{10}$/.test(nationalId)) return false
@@ -43,10 +43,18 @@ export function isValidNationalId(nationalId: string): boolean {
   const allSame = digits.every((d) => d === digits[0])
   if (allSame) return false
 
-  // رد کردن کدهای با پیش‌شماره‌ی غیرمعتبر (۰۰۰ تا ۰۰۹ معمولاً نامعتبر)
-  // کد ملی ایرانی با ۳ رقم اول از ۰۰۱ شروع می‌شود و هر ۳ رقم یک استان را نشان می‌دهد
+  // رد کردن الگوهای متوالی صعودی و نزولی
+  let isAscending = true
+  let isDescending = true
+  for (let i = 0; i < 9; i++) {
+    if (digits[i + 1] !== digits[i] + 1) isAscending = false
+    if (digits[i + 1] !== digits[i] - 1) isDescending = false
+  }
+  if (isAscending || isDescending) return false
+
+  // رد کردن کدهای با پیش‌شماره‌ی ۰۰۰ (نامعتبر)
   const prefix = parseInt(nationalId.substring(0, 3), 10)
-  if (prefix === 0) return false // 000 پیش‌شماره نامعتبر
+  if (prefix === 0) return false
 
   // الگوریتم checksum استاندارد ایرانی
   const check = digits[9]
@@ -60,13 +68,18 @@ export function isValidNationalId(nationalId: string): boolean {
   // بررسی checksum
   if (expected !== check) return false
 
-  // رد کردن کدهای رایج ساختگی (شناسایی الگوهای متداول)
-  // کدهایی که الگوی 1234567890 یا 9876543210 دارند
-  const isSequential = nationalId === '1234567890' || nationalId === '9876543210' ||
-                       nationalId === '0123456789' || nationalId === '1111111111' ||
-                       nationalId === '0000000000' || nationalId === '9999999999' ||
-                       nationalId === '1234567891'
-  if (isSequential) return false
+  // رد کردن کدهای رایج ساختگی شناخته‌شده
+  const knownFake = [
+    '1234567890', '9876543210', '0123456789', '1111111111',
+    '0000000000', '9999999999', '1234567891', '2234567891',
+    '123456789', '0012345678', '0012345679',
+  ]
+  if (knownFake.includes(nationalId)) return false
+
+  // رد کردن کدهایی که ۳ رقم اول همه صفر باشند یا الگوی غیراستاندارد
+  // کد ملی ایرانی: ۳ رقم اول نشان‌دهنده‌ی شهر/استان محل صدور است (۱ تا ۹۹۹)
+  // کدهای با پیش‌شماره‌ی 999 نامعتبر هستند
+  if (prefix >= 999) return false
 
   return true
 }

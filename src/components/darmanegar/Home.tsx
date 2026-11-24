@@ -4,8 +4,9 @@
 
 import { useViewStore } from '@/stores/useViewStore'
 import { LogoWithText } from './Logo'
+import { FeedbackForm } from './FeedbackForm'
 import { Button } from '@/components/ui/button'
-import { HeartHandshake, Stethoscope, ShieldCheck } from 'lucide-react'
+import { HeartHandshake, Stethoscope, ShieldCheck, MessageSquare } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export function Home() {
@@ -16,6 +17,14 @@ export function Home() {
       <header className="px-4 pt-6 pb-2">
         <div className="max-w-md mx-auto flex justify-between items-center">
           <span className="text-xs text-muted-foreground">پلتفرم خدمات سلامت ایران</span>
+          <FeedbackForm
+            trigger={
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                <MessageSquare className="w-3.5 h-3.5 ml-1" />
+                بازخورد
+              </Button>
+            }
+          />
         </div>
       </header>
 
@@ -95,8 +104,16 @@ export function Home() {
         </div>
       </main>
 
-      <footer className="mt-auto px-4 py-4 text-center text-xs text-muted-foreground">
-        © درمانگر — تمامی حقوق محفوظ است
+      <footer className="mt-auto px-4 py-4 text-center text-xs text-muted-foreground flex flex-col items-center gap-2">
+        <FeedbackForm
+          trigger={
+            <Button variant="ghost" size="sm" className="text-xs text-primary">
+              <MessageSquare className="w-3.5 h-3.5 ml-1" />
+              انتقادات، پیشنهادات و نظرات
+            </Button>
+          }
+        />
+        <div>© درمانگر — تمامی حقوق محفوظ است</div>
       </footer>
     </div>
   )

@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   ArrowRight, LogOut, ShieldCheck, Users, Inbox, BarChart3, Loader2,
   CheckCircle2, XCircle, Clock, MapPin, FileText, Eye, Coins, TrendingUp,
-  MessageCircle, RefreshCw, Bell
+  MessageCircle, RefreshCw, Bell, MessageSquare
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -322,7 +322,7 @@ function AdminDashboard({ admin, onLogout, onBack }: {
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-4">
         <Tabs defaultValue="providers">
-          <TabsList className="grid grid-cols-5 mb-4">
+          <TabsList className="grid grid-cols-6 mb-4">
             <TabsTrigger value="providers">
               <Users className="w-4 h-4 ml-1" />
               ارائه‌دهندگان
@@ -345,6 +345,10 @@ function AdminDashboard({ admin, onLogout, onBack }: {
             <TabsTrigger value="notifications">
               <Bell className="w-4 h-4 ml-1" />
               اعلان‌ها
+            </TabsTrigger>
+            <TabsTrigger value="feedback">
+              <MessageSquare className="w-4 h-4 ml-1" />
+              بازخورد
             </TabsTrigger>
           </TabsList>
 
@@ -599,6 +603,11 @@ function AdminDashboard({ admin, onLogout, onBack }: {
           {/* === Notifications Tab === */}
           <TabsContent value="notifications" className="space-y-3">
             <NotificationsTab />
+          </TabsContent>
+
+          {/* === Feedback Tab === */}
+          <TabsContent value="feedback" className="space-y-3">
+            <FeedbackTab />
           </TabsContent>
         </Tabs>
       </main>
@@ -992,4 +1001,178 @@ function getNotificationTypeLabel(type: string): string {
     GENERIC: 'عمومی',
   }
   return labels[type] || type
+}
+
+// === Feedback Tab ===
+function FeedbackTab() {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [filterStatus, setFilterStatus] = useState('')
+
+  const loadData = useCallback(async () => {
+    try {
+      const params = filterStatus ? `?status=${filterStatus}` : ''
+      const res = await fetch(`/api/admin/feedback${params}`, { credentials: 'include' })
+      const d = await res.json()
+      if (!d.error) setData(d)
+    } catch {}
+    finally { setLoading(false) }
+  }, [filterStatus])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+    try {
+      await fetch(`/api/admin/feedback/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status }),
+      })
+      toast.success('وضعیت به‌روزرسانی شد')
+      loadData()
+    } catch {
+      toast.error('خطا در به‌روزرسانی')
+    }
+  }
+
+  if (loading) return <div className="text-center py-8"><Loader2 className="w-6 h-6 mx-auto animate-spin text-primary" /></div>
+  if (!data) return <div className="text-center py-8 text-muted-foreground">داده‌ای موجود نیست</div>
+
+  const stats = data.stats
+  const feedback = data.feedback || []
+
+  const typeLabels: Record<string, string> = {
+    SUGGESTION: '💡 پیشنهاد',
+    COMPLAINT: '⚠️ انتقاد',
+    COMPLIMENT: '🙏 تشکر',
+    BUG_REPORT: '🐛 مشکل فنی',
+    QUESTION: '❓ سوال',
+    OTHER: '📝 سایر',
+  }
+
+  const statusLabels: Record<string, string> = {
+    NEW: 'جدید',
+    REVIEWED: 'در حال بررسی',
+    RESOLVED: 'حل شده',
+    ARCHIVED: 'آرشیو',
+  }
+
+  const statusColors: Record<string, string> = {
+    NEW: 'bg-amber-100 text-amber-700',
+    REVIEWED: 'bg-blue-100 text-blue-700',
+    RESOLVED: 'bg-green-100 text-green-700',
+    ARCHIVED: 'bg-muted text-muted-foreground',
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <StatBox label="کل بازخوردها" value={stats.total.toLocaleString('fa-IR')} icon={<MessageSquare className="w-5 h-5" />} color="text-primary" />
+        <StatBox label="جدید (بررسی نشده)" value={stats.newCount.toLocaleString('fa-IR')} icon={<MessageSquare className="w-5 h-5" />} color="text-amber-600" />
+        <StatBox label="حل شده" value={(stats.total - stats.newCount).toLocaleString('fa-IR')} icon={<CheckCircle2 className="w-5 h-5" />} color="text-green-600" />
+      </div>
+
+      {/* Filter */}
+      <Card className="border-primary/20">
+        <CardContent className="p-3">
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant={filterStatus === '' ? 'default' : 'outline'}
+              onClick={() => setFilterStatus('')}
+              className="text-xs"
+            >
+              همه ({stats.total.toLocaleString('fa-IR')})
+            </Button>
+            {['NEW', 'REVIEWED', 'RESOLVED', 'ARCHIVED'].map((s) => (
+              <Button
+                key={s}
+                size="sm"
+                variant={filterStatus === s ? 'default' : 'outline'}
+                onClick={() => setFilterStatus(s)}
+                className="text-xs"
+              >
+                {statusLabels[s]}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Feedback list */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center justify-between">
+            <span>بازخوردهای دریافت‌شده</span>
+            <Button size="sm" variant="ghost" onClick={loadData}>
+              <RefreshCw className="w-3.5 h-3.5 ml-1" />
+              به‌روزرسانی
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {feedback.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-4">هنوز بازخوردی ثبت نشده است</div>
+          ) : (
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {feedback.map((f: any) => (
+                <div key={f.id} className="border rounded-lg p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className={`text-[10px] ${statusColors[f.status] || ''}`}>
+                          {statusLabels[f.status] || f.status}
+                        </Badge>
+                        <span className="text-sm font-bold">{typeLabels[f.type] || f.type}</span>
+                        {f.userRole && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {f.userRole === 'REQUESTER' ? 'درخواست‌کننده' : f.userRole === 'PROVIDER' ? 'ارائه‌دهنده' : 'بازدیدکننده'}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="font-bold mt-1">{f.subject}</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground shrink-0">
+                      {new Date(f.createdAt).toLocaleString('fa-IR')}
+                    </div>
+                  </div>
+                  <div className="text-sm text-foreground bg-muted/30 rounded p-2">
+                    {f.message}
+                  </div>
+                  {(f.name || f.phone || f.email) && (
+                    <div className="text-xs text-muted-foreground flex items-center gap-3 flex-wrap">
+                      {f.name && <span>👤 {f.name}</span>}
+                      {f.phone && <span dir="ltr">📞 {f.phone}</span>}
+                      {f.email && <span dir="ltr">✉️ {f.email}</span>}
+                    </div>
+                  )}
+                  {f.adminReply && (
+                    <div className="text-xs bg-primary/10 rounded p-2 border border-primary/20">
+                      <strong className="text-primary">پاسخ مدیر:</strong> {f.adminReply}
+                    </div>
+                  )}
+                  {/* Quick actions */}
+                  <div className="flex gap-1 pt-1">
+                    <Button size="sm" variant="ghost" className="text-[10px] h-7" onClick={() => handleUpdateStatus(f.id, 'REVIEWED')}>
+                      در حال بررسی
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-[10px] h-7 text-green-600" onClick={() => handleUpdateStatus(f.id, 'RESOLVED')}>
+                      حل شد
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-[10px] h-7 text-muted-foreground" onClick={() => handleUpdateStatus(f.id, 'ARCHIVED')}>
+                      آرشیو
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
 }

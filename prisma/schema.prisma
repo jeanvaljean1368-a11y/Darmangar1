@@ -102,6 +102,35 @@ model Notification {
   @@index([providerId, createdAt])
 }
 
+// ===== System Feedback (انتقادات، پیشنهادات و نظرات کلی سیستم) =====
+// همه‌ی کاربران (درخواست‌کننده، ارائه‌دهنده، یا بازدیدکننده) می‌توانند بازخورد ثبت کنند
+model SystemFeedback {
+  id          String   @id @default(cuid())
+  // اطلاعات ناشناس (اختیاری)
+  name        String?
+  phone       String?
+  email       String?
+  // نوع بازخورد
+  type        FeedbackType
+  // موضوع کوتاه
+  subject     String
+  // متن کامل بازخورد
+  message     String
+  // وضعیت بررسی توسط مدیر
+  status      FeedbackStatus @default(NEW)
+  adminReply  String?
+  // آیا کاربر درخواست‌کننده بوده یا ارائه‌دهنده یا بازدیدکننده
+  userRole    String?  // REQUESTER, PROVIDER, VISITOR
+  // در صورت مرتبط بودن با ارائه‌دهنده خاص
+  providerId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
 // Documents uploaded by provider during registration
 model ProviderDocument {
   id          String   @id @default(cuid())
@@ -422,4 +451,20 @@ enum NotificationType {
   DOCUMENT_REJECTED   // مدارک شما رد شد
   NEW_RATING          // امتیاز جدید دریافت کردید
   GENERIC             // عمومی
+}
+
+enum FeedbackType {
+  SUGGESTION     // پیشنهاد
+  COMPLAINT      // انتقاد / شکایت
+  COMPLIMENT     // تشکر و قدردانی
+  BUG_REPORT     // گزارش مشکل فنی
+  QUESTION       // سوال
+  OTHER          // سایر
+}
+
+enum FeedbackStatus {
+  NEW        // جدید — بررسی نشده
+  REVIEWED   // در حال بررسی
+  RESOLVED   // حل شده
+  ARCHIVED   // آرشیو شده
 }

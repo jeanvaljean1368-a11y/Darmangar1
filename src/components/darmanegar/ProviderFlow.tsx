@@ -1254,6 +1254,9 @@ function ProviderStatsTab({ provider }: { provider: ProviderData }) {
       {/* Working Hours */}
       <WorkingHoursEditor providerId={provider.id} />
 
+      {/* Profile photo */}
+      <ProfilePhotoEditor provider={provider} onUpdate={(photo) => onProviderUpdate({ ...provider, profilePhoto: photo })} />
+
       {/* Bio editor */}
       <BioEditor provider={provider} />
 
@@ -1426,6 +1429,70 @@ function WorkingHoursEditor({ providerId }: { providerId: string }) {
 }
 
 // Bio editor
+// Profile photo editor
+function ProfilePhotoEditor({ provider, onUpdate }: { provider: ProviderData; onUpdate: (photo: string) => void }) {
+  const [file, setFile] = useState<File | null>(null)
+  const [loading, setLoading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleUpload = async () => {
+    if (!file) return toast.error('فایل عکس انتخاب کنید')
+    setLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      const res = await fetch('/api/provider/profile/photo', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+      toast.success('عکس پروفایل به‌روزرسانی شد')
+      onUpdate(data.profilePhoto)
+      setFile(null)
+    } catch {
+      toast.error('خطا در آپلود')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Card className="border-primary/20">
+      <CardHeader>
+        <CardTitle className="text-sm">عکس پروفایل</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-20 h-20">
+            <AvatarImage src={provider.profilePhoto || undefined} />
+            <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+              {provider.firstName.charAt(0)}{provider.lastName.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <FileInput file={file} onChange={setFile} accept="image/*" />
+            {file && (
+              <Button
+                onClick={handleUpload}
+                disabled={loading}
+                size="sm"
+                className="w-full mt-2 bg-teal-gradient"
+              >
+                {loading ? <><Loader2 className="w-3 h-3 ml-1 animate-spin" /> در حال آپلود...</> : 'ذخیره عکس جدید'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function BioEditor({ provider }: { provider: ProviderData }) {
   const [bio, setBio] = useState(provider.bio || '')
   const [saving, setSaving] = useState(false)

@@ -5,12 +5,15 @@
 import { useViewStore } from '@/stores/useViewStore'
 import { LogoWithText } from './Logo'
 import { FeedbackForm } from './FeedbackForm'
+import { TermsModal } from './TermsModal'
 import { Button } from '@/components/ui/button'
-import { HeartHandshake, Stethoscope, ShieldCheck, MessageSquare } from 'lucide-react'
+import { HeartHandshake, Stethoscope, ShieldCheck, MessageSquare, FileText } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useState } from 'react'
 
 export function Home() {
   const setView = useViewStore((s) => s.setView)
+  const [showTerms, setShowTerms] = useState(false)
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-teal-50/30 via-background to-background">
@@ -105,16 +108,24 @@ export function Home() {
       </main>
 
       <footer className="mt-auto px-4 py-4 text-center text-xs text-muted-foreground flex flex-col items-center gap-2">
-        <FeedbackForm
-          trigger={
-            <Button variant="ghost" size="sm" className="text-xs text-primary">
-              <MessageSquare className="w-3.5 h-3.5 ml-1" />
-              انتقادات، پیشنهادات و نظرات
-            </Button>
-          }
-        />
+        <div className="flex gap-2 flex-wrap justify-center">
+          <Button variant="ghost" size="sm" className="text-xs text-primary" onClick={() => setShowTerms(true)}>
+            <FileText className="w-3.5 h-3.5 ml-1" />
+            قوانین و مقررات
+          </Button>
+          <FeedbackForm
+            trigger={
+              <Button variant="ghost" size="sm" className="text-xs text-primary">
+                <MessageSquare className="w-3.5 h-3.5 ml-1" />
+                انتقادات و پیشنهادات
+              </Button>
+            }
+          />
+        </div>
         <div>© درمانگر — تمامی حقوق محفوظ است</div>
       </footer>
+
+      <TermsModal open={showTerms} onOpenChange={setShowTerms} />
     </div>
   )
 }

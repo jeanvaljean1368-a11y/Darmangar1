@@ -19,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   ArrowRight, ArrowLeft, Syringe, Heart, Bandage, Hand, Activity,
   MapPin, Clock, User, Phone, CheckCircle2, MessageCircle, XCircle,
-  Loader2, RefreshCw, Home as HomeIcon, Info, Siren
+  Loader2, RefreshCw, Home as HomeIcon, Info, Siren, BadgeCheck
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
@@ -302,9 +302,17 @@ export function RequesterFlow() {
     }
   }
 
-  const handleResend = () => {
+  const handleResend = async () => {
+    // ارسال مجدد مستقیم با همان داده‌های قبلی
+    if (!serviceType || !province || !city || !region) {
+      // اگه داده‌ها ناقص هستن، برگرده به فرم
+      setRequestInfo(null)
+      setStep('form')
+      return
+    }
+    // ارسال مستقیم با داده‌های قبلی
     setRequestInfo(null)
-    setStep('form')
+    await handleSubmitRequest()
   }
 
   // === Render ===
@@ -694,8 +702,9 @@ function WaitingView({ requestInfo, onSelectProvider, onCancel, onResend }: {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold">
+                        <div className="font-bold flex items-center gap-1">
                           {p.provider.firstName} {p.provider.lastName}
+                          <BadgeCheck className="w-4 h-4 text-primary shrink-0" />
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {p.provider.region ? `منطقه: ${p.provider.region}` : ''}

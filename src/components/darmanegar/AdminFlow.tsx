@@ -322,7 +322,7 @@ function AdminDashboard({ admin, onLogout, onBack }: {
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-4">
         <Tabs defaultValue="providers">
-          <TabsList className="grid grid-cols-6 mb-4">
+          <TabsList className="grid grid-cols-7 mb-4">
             <TabsTrigger value="providers">
               <Users className="w-4 h-4 ml-1" />
               ارائه‌دهندگان
@@ -349,6 +349,10 @@ function AdminDashboard({ admin, onLogout, onBack }: {
             <TabsTrigger value="feedback">
               <MessageSquare className="w-4 h-4 ml-1" />
               بازخورد
+            </TabsTrigger>
+            <TabsTrigger value="settings">
+              <ShieldCheck className="w-4 h-4 ml-1" />
+              تنظیمات
             </TabsTrigger>
           </TabsList>
 
@@ -608,6 +612,11 @@ function AdminDashboard({ admin, onLogout, onBack }: {
           {/* === Feedback Tab === */}
           <TabsContent value="feedback" className="space-y-3">
             <FeedbackTab />
+          </TabsContent>
+
+          {/* === Settings Tab === */}
+          <TabsContent value="settings" className="space-y-3">
+            <AdminSettingsTab />
           </TabsContent>
         </Tabs>
       </main>
@@ -1001,6 +1010,122 @@ function getNotificationTypeLabel(type: string): string {
     GENERIC: 'عمومی',
   }
   return labels[type] || type
+}
+
+// === Admin Settings Tab ===
+function AdminSettingsTab() {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword) return toast.error('رمز فعلی و جدید الزامی است')
+    if (newPassword.length < 6) return toast.error('رمز جدید باید حداقل ۶ کاراکتر باشد')
+    if (newPassword !== confirmPassword) return toast.error('رمز جدید و تکرار آن یکسان نیستند')
+
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
+      const data = await res.json()
+      if (data.error) {
+        toast.error(data.error)
+        return
+      }
+      toast.success('رمز عبور با موفقیت تغییر کرد')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch {
+      toast.error('خطا در تغییر رمز')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-primary" />
+            تغییر رمز عبور
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>رمز فعلی</Label>
+            <Input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="••••••"
+              dir="ltr"
+              className="text-right"
+            />
+          </div>
+          <div>
+            <Label>رمز جدید</Label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="حداقل ۶ کاراکتر"
+              dir="ltr"
+              className="text-right"
+            />
+          </div>
+          <div>
+            <Label>تکرار رمز جدید</Label>
+            <Input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••"
+              dir="ltr"
+              className={`text-right ${
+                confirmPassword.length > 0
+                  ? confirmPassword === newPassword ? 'border-green-500' : 'border-red-500'
+                  : ''
+              }`}
+            />
+            {confirmPassword.length > 0 && (
+              <div className={`text-xs mt-1 ${confirmPassword === newPassword ? 'text-green-600' : 'text-red-500'}`}>
+                {confirmPassword === newPassword ? '✓ رمزها مطابقت دارند' : 'رمزها مطابقت ندارند'}
+              </div>
+            )}
+          </div>
+          <Button
+            onClick={handleChangePassword}
+            disabled={loading || !currentPassword || !newPassword || newPassword !== confirmPassword}
+            className="w-full bg-teal-gradient"
+          >
+            {loading ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" /> در حال تغییر...</> : 'تغییر رمز'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="pt-4 text-sm">
+          <div className="font-bold mb-2 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-primary" />
+            نکات امنیتی
+          </div>
+          <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+            <li>رمز عبور باید حداقل ۶ کاراکتر باشد</li>
+            <li>از ترکیب حروف، اعداد و نمادها استفاده کنید</li>
+            <li>رمز را با کسی به اشتراک نگذارید</li>
+            <li>به‌طور دوره‌ای رمز را تغییر دهید</li>
+          </ul>
+        </CardContent>
+      </Card>
+    </div>
+  )
 }
 
 // === Feedback Tab ===

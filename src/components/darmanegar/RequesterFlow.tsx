@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { SERVICE_TYPES, IRAN_PROVINCES, getCitiesForProvince, getNeighborhoodsForCity } from '@/lib/constants'
+import { SERVICE_TYPES, IRAN_PROVINCES, getCitiesForProvince, getNeighborhoodsForCity, REQUEST_VALIDITY_MINUTES } from '@/lib/constants'
 import { LeafletMapPicker } from './LeafletMapPicker'
 import { getSocket } from '@/lib/ws-client'
 import type { ServiceType } from '@prisma/client'
@@ -761,4 +761,4 @@ function toEnglishDigits(s: string): string {
   return s.replace(/[۰-۹٠-٩]/g, (c) => String(persian.indexOf(c) >= 0 ? persian.indexOf(c) : arabic.indexOf(c)))
 }
 
-const REQUEST_VALIDITY_MINUTES = 20
+// استفاده از REQUEST_VALIDITY_MINUTES از constants.ts (۳۰ دقیقه)

@@ -542,7 +542,7 @@ function AdminDashboard({ admin, onLogout, onBack }: {
                         <span className="text-sm font-normal mr-1">تومان</span>
                       </div>
                       <div className="text-[10px] text-muted-foreground mt-0.5">
-                        حاصل از کسر ۸,۰۰۰ تومان به ازای هر پیشنهاد غیررایگان ارائه‌دهندگان
+                        حاصل از کسر ۱۰,۰۰۰ تومان به ازای هر پیشنهاد غیررایگان ارائه‌دهندگان
                       </div>
                     </div>
                     <div className="text-left shrink-0">

@@ -257,13 +257,14 @@ export function serializeServedNeighborhoods(arr: string[]): string {
 // هزینه هر پیشنهاد پس از اتمام پیشنهادهای رایگان
 // مبلغ در زمان ارسال پیشنهاد از حساب ارائه‌دهنده کسر و به صندوق سیستم واریز می‌شود
 // ارتباطی به قبول شدن پیشنهاد توسط درخواست‌کننده ندارد
-export const PROPOSAL_FEE = 8000 // Toman, charged per proposal after free ones exhausted
-export const FREE_PROPOSAL_LIMIT = 5 // 5 پیشنهاد رایگان برای هر ارائه‌دهنده
-export const FREE_PROPOSAL_WITH_REFERRAL = 7 // 5 + 2 اضافه برای معرفی‌شده‌ها
+// از هر ارائه‌دهنده‌ای که به یک درخواست پیشنهاد می‌دهد، این مبلغ کسر می‌شود
+export const PROPOSAL_FEE = 10000 // Toman — حق کمیسیون به ازای هر پیشنهاد (پس از ۵ رایگان)
+export const FREE_PROPOSAL_LIMIT = 5 // ۵ پیشنهاد اول رایگان برای هر ارائه‌دهنده
+export const FREE_PROPOSAL_WITH_REFERRAL = 7 // ۵ + ۲ اضافه برای معرفی‌شده‌ها با کد معرف
 export const REFERRAL_BONUS_PROPOSALS = 2 // ۲ پیشنهاد رایگان به ازای هر معرفی
-export const REQUEST_VALIDITY_MINUTES = 20
-export const EMERGENCY_VALIDITY_MINUTES = 10 // اورژانسی: مهلت کوتاه‌تر
-export const MAX_PROPOSALS_PER_REQUEST = 5
+export const REQUEST_VALIDITY_MINUTES = 30 // مدت اعتبار درخواست: نیم ساعت
+export const EMERGENCY_VALIDITY_MINUTES = 15 // اورژانسی: ۱۵ دقیقه (نصف درخواست عادی)
+export const MAX_PROPOSALS_PER_REQUEST = 5 // حداکثر ۵ پیشنهاد برای هر درخواست
 export const MAX_EMERGENCY_PROPOSALS = 7 // اورژانسی: امکان پیشنهاد بیشتر
 
 // Admin credentials (default)

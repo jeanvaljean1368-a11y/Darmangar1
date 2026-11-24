@@ -864,7 +864,7 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
 
         {isApproved ? (
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid grid-cols-6 mb-4">
+            <TabsList className="grid grid-cols-7 mb-4">
               <TabsTrigger value="requests" className="text-xs">
                 <Inbox className="w-3.5 h-3.5 ml-1" />
                 درخواست‌ها
@@ -893,6 +893,10 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
               <TabsTrigger value="credentials" className="text-xs">
                 <ShieldCheck className="w-3.5 h-3.5 ml-1" />
                 اعتبار
+              </TabsTrigger>
+              <TabsTrigger value="history" className="text-xs">
+                <FileText className="w-3.5 h-3.5 ml-1" />
+                سوابق
               </TabsTrigger>
             </TabsList>
 
@@ -970,6 +974,10 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
 
             <TabsContent value="credentials" className="space-y-3">
               <ProviderCredentialsTab provider={provider} />
+            </TabsContent>
+
+            <TabsContent value="history" className="space-y-3">
+              <ProviderHistoryTab provider={provider} />
             </TabsContent>
           </Tabs>
         ) : (
@@ -1976,6 +1984,265 @@ function ScoreBar({ label, value, max }: { label: string; value: number; max: nu
       <div className="text-[10px] font-bold mt-0.5">{value.toLocaleString('fa-IR')}/{max.toLocaleString('fa-IR')}</div>
     </div>
   )
+}
+
+// ============== History Tab ==============
+function ProviderHistoryTab({ provider }: { provider: ProviderData }) {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all')
+  const [showCompleted, setShowCompleted] = useState(true)
+
+  const loadData = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/provider/history?filter=${filter}`, { credentials: 'include' })
+      const d = await res.json()
+      if (!d.error) setData(d)
+    } catch {}
+    finally { setLoading(false) }
+  }, [filter])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  if (loading) {
+    return <div className="text-center py-8"><Loader2 className="w-6 h-6 mx-auto animate-spin text-primary" /></div>
+  }
+
+  const stats = data?.stats
+  const proposals = data?.proposals || []
+  const completedServices = data?.completedServices || []
+
+  return (
+    <div className="space-y-3">
+      {/* Stats overview */}
+      <div className="grid grid-cols-3 gap-2">
+        <Card className="border-primary/15">
+          <CardContent className="p-3 text-center">
+            <div className="text-xl font-bold text-primary">{stats?.total?.toLocaleString('fa-IR') || '۰'}</div>
+            <div className="text-[10px] text-muted-foreground">کل پیشنهادها</div>
+          </CardContent>
+        </Card>
+        <Card className="border-primary/15">
+          <CardContent className="p-3 text-center">
+            <div className="text-xl font-bold text-green-600">{stats?.completed?.toLocaleString('fa-IR') || '۰'}</div>
+            <div className="text-[10px] text-muted-foreground">خدمات انجام‌شده</div>
+          </CardContent>
+        </Card>
+        <Card className="border-primary/15">
+          <CardContent className="p-3 text-center">
+            <div className="text-xl font-bold text-amber-500">{stats?.avgRating?.toLocaleString('fa-IR') || '۰'}</div>
+            <div className="text-[10px] text-muted-foreground">میانگین امتیاز ({stats?.totalRatings?.toLocaleString('fa-IR') || '۰'})</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Section toggle */}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant={showCompleted ? 'default' : 'outline'}
+          onClick={() => setShowCompleted(true)}
+          className="text-xs"
+        >
+          <CheckCircle2 className="w-3.5 h-3.5 ml-1" />
+          خدمات انجام‌شده ({completedServices.length.toLocaleString('fa-IR')})
+        </Button>
+        <Button
+          size="sm"
+          variant={!showCompleted ? 'default' : 'outline'}
+          onClick={() => setShowCompleted(false)}
+          className="text-xs"
+        >
+          <Send className="w-3.5 h-3.5 ml-1" />
+          همه‌ی پیشنهادها ({stats?.total?.toLocaleString('fa-IR') || '۰'})
+        </Button>
+      </div>
+
+      {/* Filter buttons (only for proposals) */}
+      {!showCompleted && (
+        <div className="flex gap-1 flex-wrap">
+          {[
+            { value: 'all', label: 'همه' },
+            { value: 'completed', label: 'تکمیل‌شده' },
+            { value: 'active', label: 'فعال / پذیرفته‌شده' },
+            { value: 'expired', label: 'منقضی' },
+            { value: 'cancelled', label: 'لغو‌شده' },
+          ].map((f) => (
+            <Button
+              key={f.value}
+              size="sm"
+              variant={filter === f.value ? 'default' : 'ghost'}
+              onClick={() => setFilter(f.value)}
+              className="text-[10px] h-7"
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {/* Completed services section */}
+      {showCompleted ? (
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-600" />
+              خدمات انجام‌شده
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {completedServices.length === 0 ? (
+              <div className="text-center text-muted-foreground text-sm py-8">
+                <CheckCircle2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                هنوز خدمتی تکمیل نشده است
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                {completedServices.map((s: any) => (
+                  <div key={s.id} className="border rounded-lg p-3 bg-green-50/30 border-green-200">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-sm flex items-center gap-2 flex-wrap">
+                          {getServiceLabel(s.serviceType)}
+                          {s.isEmergency && <Badge className="bg-red-500 text-white text-[10px]">اورژانسی</Badge>}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">{s.description}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {s.requesterName} • {s.province} - {s.city}
+                          {s.neighborhood && ` • محله ${s.neighborhood}`}
+                        </div>
+                        {/* Rating */}
+                        {s.rating && (
+                          <div className="mt-2 bg-amber-50 rounded p-2 border border-amber-200">
+                            <div className="flex items-center gap-2">
+                              <span className="text-amber-500">{'★'.repeat(s.rating.stars)}{'☆'.repeat(5 - s.rating.stars)}</span>
+                              <span className="text-xs font-bold text-amber-700">
+                                {s.rating.stars.toLocaleString('fa-IR')} ستاره
+                              </span>
+                            </div>
+                            {s.rating.comment && (
+                              <div className="text-xs text-muted-foreground mt-1">«{s.rating.comment}»</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-left shrink-0">
+                        <div className="font-bold text-primary">
+                          {s.price.toLocaleString('fa-IR')}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">تومان</div>
+                        <div className="text-[10px] text-muted-foreground mt-1">
+                          {s.completedAt ? new Date(s.completedAt).toLocaleDateString('fa-IR') : new Date(s.createdAt).toLocaleDateString('fa-IR')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Total earnings */}
+            {completedServices.length > 0 && (
+              <div className="mt-3 pt-3 border-t flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">جمع درآمد از خدمات انجام‌شده:</span>
+                <span className="font-bold text-primary text-lg">
+                  {stats?.totalEarnings?.toLocaleString('fa-IR') || '۰'} تومان
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        /* All proposals section */
+        <Card className="border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Send className="w-4 h-4 text-primary" />
+                سوابق پیشنهادها
+              </span>
+              <Button size="sm" variant="ghost" onClick={loadData}>
+                <RefreshCw className="w-3.5 h-3.5 ml-1" />
+                به‌روزرسانی
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {proposals.length === 0 ? (
+              <div className="text-center text-muted-foreground text-sm py-8">
+                <Send className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                هنوز پیشنهادی ثبت نکرده‌اید
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                {proposals.map((p: any) => (
+                  <div key={p.id} className="border rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold">{getServiceLabel(p.serviceType)}</span>
+                          <HistoryStatusBadge status={p.requestStatus} />
+                          {p.isEmergency && <Badge className="bg-red-500 text-white text-[10px]">اورژانسی</Badge>}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1 truncate">{p.description}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {p.requesterName} • {p.neighborhood ? `محله ${p.neighborhood}` : `${p.province} - ${p.city}`}
+                        </div>
+                        {p.message && (
+                          <div className="text-xs bg-muted/30 rounded p-1.5 mt-1 text-muted-foreground">
+                            پیام شما: {p.message}
+                          </div>
+                        )}
+                        {p.rating && (
+                          <div className="text-xs mt-1 text-amber-600 flex items-center gap-1">
+                            <Star className="w-3 h-3" />
+                            {p.rating.stars.toLocaleString('fa-IR')} ستاره دریافت کردید
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-left shrink-0">
+                        <div className="font-bold text-primary">
+                          {p.price.toLocaleString('fa-IR')}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">تومان</div>
+                        <div className="text-[10px] text-muted-foreground mt-1">
+                          {new Date(p.createdAt).toLocaleDateString('fa-IR')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function HistoryStatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    ACTIVE: { label: 'فعال', cls: 'bg-green-100 text-green-700' },
+    SELECTED: { label: 'پذیرفته‌شده', cls: 'bg-primary/15 text-primary' },
+    EXPIRED: { label: 'منقضی', cls: 'bg-muted text-muted-foreground' },
+    CANCELLED: { label: 'لغو‌شده', cls: 'bg-red-100 text-red-700' },
+    COMPLETED: { label: 'تکمیل‌شده', cls: 'bg-green-100 text-green-700' },
+  }
+  const v = map[status] || { label: status, cls: 'bg-muted' }
+  return <Badge variant="secondary" className={`text-[10px] ${v.cls}`}>{v.label}</Badge>
+}
+
+function getServiceLabel(serviceType: string): string {
+  const labels: Record<string, string> = {
+    NURSING: 'پرستاری',
+    CAREGIVER: 'کمک‌پرستاری',
+    WOUND_SPECIALIST: 'کارشناس زخم',
+    MASSAGE: 'ماساژ درمانی',
+    PHYSIOTHERAPY: 'فیزیوتراپی',
+  }
+  return labels[serviceType] || serviceType
 }
 
 function toEnglishDigits(s: string): string {

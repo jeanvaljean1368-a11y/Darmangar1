@@ -24,7 +24,7 @@ import {
   ArrowRight, LogOut, Stethoscope, FileText, Wallet, Users, Clock,
   Inbox, Send, MessageCircle, UserCircle, CheckCircle2, XCircle,
   Loader2, Coins, Gift, MapPin, Phone, RefreshCw, Eye, Upload, Home as HomeIcon,
-  BarChart3, TrendingUp, Calendar, Star, CreditCard
+  BarChart3, TrendingUp, Calendar, Star, CreditCard, ShieldCheck
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -864,7 +864,7 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
 
         {isApproved ? (
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid grid-cols-5 mb-4">
+            <TabsList className="grid grid-cols-6 mb-4">
               <TabsTrigger value="requests" className="text-xs">
                 <Inbox className="w-3.5 h-3.5 ml-1" />
                 درخواست‌ها
@@ -889,6 +889,10 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
               <TabsTrigger value="stats" className="text-xs">
                 <BarChart3 className="w-3.5 h-3.5 ml-1" />
                 آمار
+              </TabsTrigger>
+              <TabsTrigger value="credentials" className="text-xs">
+                <ShieldCheck className="w-3.5 h-3.5 ml-1" />
+                اعتبار
               </TabsTrigger>
             </TabsList>
 
@@ -962,6 +966,10 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
 
             <TabsContent value="stats" className="space-y-3">
               <ProviderStatsTab provider={provider} />
+            </TabsContent>
+
+            <TabsContent value="credentials" className="space-y-3">
+              <ProviderCredentialsTab provider={provider} />
             </TabsContent>
           </Tabs>
         ) : (
@@ -1730,6 +1738,243 @@ function StatCard({ icon, label, value, color = '' }: {
         <div className="text-[10px] text-muted-foreground">{label}</div>
       </CardContent>
     </Card>
+  )
+}
+
+// ============== Credentials Tab ==============
+function ProviderCredentialsTab({ provider }: { provider: ProviderData }) {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [renewing, setRenewing] = useState<string | null>(null) // document type being renewed
+  const [renewFile, setRenewFile] = useState<File | null>(null)
+  const [renewLoading, setRenewLoading] = useState(false)
+
+  const loadData = useCallback(async () => {
+    try {
+      const res = await fetch('/api/provider/credentials', { credentials: 'include' })
+      const d = await res.json()
+      if (!d.error) setData(d)
+    } catch {}
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const handleRenew = async (docType: string) => {
+    if (!renewFile) return toast.error('لطفاً فایل مدرک جدید را انتخاب کنید')
+    setRenewLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('documentType', docType)
+      formData.append('file', renewFile)
+      formData.append('expiryMonths', '12')
+
+      const res = await fetch('/api/provider/credentials/renew', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+      const d = await res.json()
+      if (d.error) {
+        toast.error(d.error)
+        return
+      }
+      toast.success(d.message || 'مدرک تمدید شد')
+      setRenewing(null)
+      setRenewFile(null)
+      loadData()
+    } catch {
+      toast.error('خطا در تمدید مدرک')
+    } finally {
+      setRenewLoading(false)
+    }
+  }
+
+  if (loading) {
+    return <div className="text-center py-8"><Loader2 className="w-6 h-6 mx-auto animate-spin text-primary" /></div>
+  }
+
+  const trust = data?.trustScore
+  const credentials = data?.credentials || []
+
+  return (
+    <div className="space-y-3">
+      {/* Trust Score Card */}
+      {trust && (
+        <Card className="border-primary/30 bg-teal-gradient-soft">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-teal-gradient flex items-center justify-center text-3xl shrink-0">
+                {trust.levelIcon}
+              </div>
+              <div className="flex-1">
+                <div className="text-xs text-muted-foreground">امتیاز اعتبار شما</div>
+                <div className={`text-3xl font-bold ${trust.levelColor}`}>
+                  {trust.score.toLocaleString('fa-IR')}
+                  <span className="text-sm font-normal text-muted-foreground mr-1">/ ۱۰۰</span>
+                </div>
+                <div className={`text-sm font-bold ${trust.levelColor}`}>
+                  سطح {trust.levelLabel}
+                </div>
+              </div>
+              <div className="text-left">
+                <div className="text-xs text-muted-foreground">خدمات انجام‌شده</div>
+                <div className="text-xl font-bold">{trust.totalServices.toLocaleString('fa-IR')}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  امتیاز: {trust.averageRating.toLocaleString('fa-IR')} ({trust.totalRatings.toLocaleString('fa-IR')} نظر)
+                </div>
+              </div>
+            </div>
+            {/* Score breakdown */}
+            <div className="mt-4 grid grid-cols-5 gap-2 text-center">
+              <ScoreBar label="مدارک" value={trust.breakdown.documentsVerified} max={30} />
+              <ScoreBar label="خدمات" value={trust.breakdown.servicesCompleted} max={20} />
+              <ScoreBar label="امتیاز" value={trust.breakdown.averageRating} max={30} />
+              <ScoreBar label="قدمت" value={trust.breakdown.membershipDuration} max={10} />
+              <ScoreBar label="انقضا" value={trust.breakdown.credentialsCurrent} max={10} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Credentials List */}
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-primary" />
+            مدارک و گواهینامه‌ها
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {credentials.map((cred: any) => (
+            <div key={cred.type} className={`border rounded-lg p-3 ${cred.statusColor}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <div className="font-bold text-sm">{cred.label}</div>
+                  {cred.fileName && (
+                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+                      <FileText className="w-3 h-3" />
+                      <a href={cred.fileUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                        {cred.fileName}
+                      </a>
+                    </div>
+                  )}
+                  <div className="text-xs mt-1 font-medium">
+                    {cred.statusLabel}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1 items-end">
+                  {cred.verified ? (
+                    <Badge className="bg-green-100 text-green-700 text-[10px]">
+                      <CheckCircle2 className="w-3 h-3 ml-1" />
+                      تأیید شده
+                    </Badge>
+                  ) : cred.status === 'NOT_UPLOADED' ? (
+                    <Badge variant="outline" className="text-[10px]">آپلود نشده</Badge>
+                  ) : (
+                    <Badge className="bg-amber-100 text-amber-700 text-[10px]">در انتظار تأیید</Badge>
+                  )}
+                  {(cred.status === 'EXPIRED' || cred.status === 'EXPIRING_SOON') && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-[10px] h-6 mt-1"
+                      onClick={() => setRenewing(renewing === cred.type ? null : cred.type)}
+                    >
+                      <Upload className="w-3 h-3 ml-1" />
+                      تمدید
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Renewal form */}
+              {renewing === cred.type && (
+                <div className="mt-3 pt-3 border-t space-y-2 bg-white/50 rounded-lg p-2">
+                  <Label className="text-xs">فایل مدرک جدید را آپلود کنید:</Label>
+                  <FileInput
+                    file={renewFile}
+                    onChange={setRenewFile}
+                    accept="image/*,application/pdf"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleRenew(cred.type)}
+                      disabled={!renewFile || renewLoading}
+                      className="bg-teal-gradient flex-1"
+                    >
+                      {renewLoading ? <><Loader2 className="w-3 h-3 ml-1 animate-spin" /> در حال آپلود...</> : 'ثبت مدرک جدید'}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setRenewing(null); setRenewFile(null) }}>
+                      انصراف
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    پس از آپلود، مدرک جدید توسط مدیر بررسی و تأیید می‌شود.
+                  </p>
+                </div>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* How to increase trust score */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-4">
+          <div className="font-bold text-sm flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            چگونه اعتبار خود را افزایش دهید؟
+          </div>
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold">۳۰ امتیاز</span>
+              <span>— تأیید همه‌ی مدارک توسط مدیر سیستم</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold">۲۰ امتیاز</span>
+              <span>— انجام خدمات (۱ امتیاز به ازای هر خدمت، حداکثر ۲۰)</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold">۳۰ امتیاز</span>
+              <span>— دریافت امتیاز بالا از درخواست‌کنندگان (۶ امتیاز به ازای هر ستاره)</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold">۱۰ امتیاز</span>
+              <span>— قدمت عضویت (۱ امتیاز به ازای هر ماه، حداکثر ۱۰)</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-primary font-bold">۱۰ امتیاز</span>
+              <span>— تمدید به‌موقع مدارک منقضی‌شونده</span>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t text-xs">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg">🥉</span> برنزی (۳۰+)
+              <span className="text-lg mr-2">🥈</span> نقره‌ای (۵۰+)
+              <span className="text-lg mr-2">🥇</span> طلایی (۷۰+)
+              <span className="text-lg mr-2">💎</span> پلاتینیوم (۸۵+)
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function ScoreBar({ label, value, max }: { label: string; value: number; max: number }) {
+  const pct = Math.round((value / max) * 100)
+  return (
+    <div>
+      <div className="text-[10px] text-muted-foreground mb-1">{label}</div>
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className="h-full bg-teal-gradient" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="text-[10px] font-bold mt-0.5">{value.toLocaleString('fa-IR')}/{max.toLocaleString('fa-IR')}</div>
+    </div>
   )
 }
 

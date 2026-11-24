@@ -132,18 +132,25 @@ model SystemFeedback {
 }
 
 // Documents uploaded by provider during registration
+// هر مدرک می‌تواند تاریخ انقضا داشته باشد (مثل کارت نظام پرستاری که سالانه تمدید می‌شود)
 model ProviderDocument {
   id          String   @id @default(cuid())
   providerId  String
   type        DocumentType
-  fileUrl     String   // path under /public/uploads/
+  fileUrl     String   // path under /public/uploads/ or Vercel Blob URL
   fileName    String
   verified    Boolean  @default(false)
+  // تاریخ انقضای مدرک (اختیاری — بعضی مدارک مثل مدرک تحصیلی دائمی هستند)
+  expiresAt   DateTime?
+  // در صورت تمدید، مدرک قدیمی به‌عنوان history نگه‌داری می‌شود
+  renewedFrom String?  // آیدی مدرک قبلی که با این جایگزین شده
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@index([providerId, type])
+  @@index([expiresAt])
 }
 
 // ===== Working Hours (provider's available days/hours) =====

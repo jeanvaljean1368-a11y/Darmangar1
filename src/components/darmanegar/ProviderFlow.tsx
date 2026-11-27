@@ -411,6 +411,20 @@ function ProviderRegister({ onBack, onRegistered }: {
         body: formData,
         credentials: 'include',
       })
+
+      // Check if response is OK
+      if (!res.ok) {
+        let errorMsg = 'خطا در ثبت‌نام'
+        try {
+          const data = await res.json()
+          errorMsg = data.error || errorMsg
+        } catch {
+          errorMsg = `خطای سرور (${res.status}). ممکن است حجم فایل‌ها زیاد باشد. لطفاً فایل‌های کوچک‌تری (زیر ۲ مگابایت) استفاده کنید.`
+        }
+        toast.error(errorMsg)
+        return
+      }
+
       const data = await res.json()
       if (data.error) {
         toast.error(data.error)
@@ -419,7 +433,8 @@ function ProviderRegister({ onBack, onRegistered }: {
       toast.success(data.message || 'ثبت‌نام موفقیت‌آمیز بود')
       onRegistered(data.provider)
     } catch (e: any) {
-      toast.error('خطا در ثبت‌نام')
+      console.error('Registration error:', e)
+      toast.error('خطا در ثبت‌نام. لطفاً دوباره تلاش کنید. اگر مشکل ادامه داشت، فایل‌های کوچک‌تری استفاده کنید.')
     } finally {
       setLoading(false)
     }

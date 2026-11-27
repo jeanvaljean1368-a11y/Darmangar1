@@ -138,13 +138,14 @@ async function saveAsBase64(
 }
 
 // Validate file type and size — پشتیبانی از تصویر و PDF
-export function validateFile(file: File, allowedTypes: string[] = ['image/', 'application/pdf'], maxSizeMB = 10): { ok: boolean; error?: string } {
+// روی Vercel حد حجم کمتر هست (۴.۵MB کل فرم)
+export function validateFile(file: File, allowedTypes: string[] = ['image/', 'application/pdf'], maxSizeMB = 3): { ok: boolean; error?: string } {
   const isValidType = allowedTypes.some((t) => file.type.startsWith(t) || file.type === t)
   if (!isValidType) {
     return { ok: false, error: 'فرمت فایل مجاز نیست. فقط تصویر (JPG, PNG, ...) یا PDF مجاز است.' }
   }
   if (file.size > maxSizeMB * 1024 * 1024) {
-    return { ok: false, error: `حجم فایل نباید بیشتر از ${maxSizeMB.toLocaleString('fa-IR')} مگابایت باشد.` }
+    return { ok: false, error: `حجم فایل نباید بیشتر از ${maxSizeMB.toLocaleString('fa-IR')} مگابایت باشد. لطفاً فایل کوچک‌تری انتخاب کنید.` }
   }
   if (file.size === 0) {
     return { ok: false, error: 'فایل خالی است.' }

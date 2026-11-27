@@ -39,12 +39,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: false,
   // در حالت production، خطاهای TypeScript نباید build را متوقف کنند
-  // (در توسعه این مقادیر با bun run lint چک می‌شوند)
   typescript: {
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   },
 };
 

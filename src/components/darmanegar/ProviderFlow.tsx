@@ -182,7 +182,47 @@ function ProviderLogin({ onBack, onLoggedIn, onRegisterClick }: {
 }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [autoLoggingIn, setAutoLoggingIn] = useState(false)
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('darmanegar_saved_login')
+      if (saved) {
+        const data = JSON.parse(saved)
+        if (data.username && data.password) {
+          const decodedPassword = atob(data.password) // decode from base64
+          setUsername(data.username)
+          setPassword(decodedPassword)
+          setRememberMe(true)
+          // Auto-login
+          setAutoLoggingIn(true)
+          fetch('/api/provider/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ username: data.username, password: decodedPassword }),
+          })
+            .then((res) => res.json())
+            .then((d) => {
+              if (d.ok && d.provider) {
+                toast.success(`خوش آمدید، ${d.provider.firstName}`)
+                onLoggedIn(d.provider)
+              } else {
+                setAutoLoggingIn(false)
+                // اگر رمز عوض شده بود، ذخیره رو پاک کن
+                localStorage.removeItem('darmanegar_saved_login')
+                setRememberMe(false)
+                setPassword('')
+              }
+            })
+            .catch(() => setAutoLoggingIn(false))
+        }
+      }
+    } catch {}
+  }, [])
 
   const handleLogin = async () => {
     if (!username || !password) return toast.error('نام کاربری و رمز عبور را وارد کنید')
@@ -198,6 +238,15 @@ function ProviderLogin({ onBack, onLoggedIn, onRegisterClick }: {
       if (data.error) {
         toast.error(data.error)
         return
+      }
+      // Save credentials if remember me is checked
+      if (rememberMe) {
+        localStorage.setItem('darmanegar_saved_login', JSON.stringify({
+          username,
+          password: btoa(password), // base64 encoding (basic obfuscation)
+        }))
+      } else {
+        localStorage.removeItem('darmanegar_saved_login')
       }
       toast.success(`خوش آمدید، ${data.provider.firstName}`)
       onLoggedIn(data.provider)
@@ -223,6 +272,15 @@ function ProviderLogin({ onBack, onLoggedIn, onRegisterClick }: {
         </div>
       </header>
       <main className="flex-1 max-w-md mx-auto w-full px-4 py-6">
+        {autoLoggingIn ? (
+          <Card className="border-primary/20">
+            <CardContent className="pt-8 pb-8 text-center">
+              <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin text-primary" />
+              <div className="text-sm text-muted-foreground">در حال ورود خودکار...</div>
+              <div className="text-xs text-muted-foreground mt-1">لطفاً صبر کنید</div>
+            </CardContent>
+          </Card>
+        ) : (
         <Card className="border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -253,6 +311,18 @@ function ProviderLogin({ onBack, onLoggedIn, onRegisterClick }: {
                 onKeyDown={(e) => { if (e.key === 'Enter') handleLogin() }}
               />
             </div>
+            {/* Remember me checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-primary accent-primary"
+              />
+              <span className="text-sm text-muted-foreground">
+                رمز را ذخیره کن (ورود خودکار در دفعات بعد)
+              </span>
+            </label>
             <Button
               onClick={handleLogin}
               disabled={loading}
@@ -270,6 +340,7 @@ function ProviderLogin({ onBack, onLoggedIn, onRegisterClick }: {
             </Button>
           </CardContent>
         </Card>
+        )}
       </main>
     </div>
   )

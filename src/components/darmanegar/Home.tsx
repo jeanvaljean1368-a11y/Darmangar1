@@ -7,13 +7,38 @@ import { LogoWithText } from './Logo'
 import { FeedbackForm } from './FeedbackForm'
 import { TermsModal } from './TermsModal'
 import { Button } from '@/components/ui/button'
-import { HeartHandshake, Stethoscope, ShieldCheck, MessageSquare, FileText } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { HeartHandshake, Stethoscope, ShieldCheck, MessageSquare, FileText, RotateCcw } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export function Home() {
   const setView = useViewStore((s) => s.setView)
   const [showTerms, setShowTerms] = useState(false)
+  const [activeRequest, setActiveRequest] = useState<{ requestId: string; token: string } | null>(null)
+
+  // Check for active requester session
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('darmanegar_requester_session')
+      if (saved) {
+        const data = JSON.parse(saved)
+        if (data.requestId && data.token) {
+          // Check if the request is still active
+          fetch(`/api/request/${data.requestId}?t=${data.token}`)
+            .then((res) => res.json())
+            .then((d) => {
+              if (d.request && (d.request.status === 'ACTIVE' || d.request.status === 'SELECTED')) {
+                setActiveRequest({ requestId: data.requestId, token: data.token })
+              } else {
+                localStorage.removeItem('darmanegar_requester_session')
+              }
+            })
+            .catch(() => {})
+        }
+      }
+    } catch {}
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-teal-50/30 via-background to-background">
@@ -32,6 +57,33 @@ export function Home() {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+        {/* Active request banner */}
+        {activeRequest && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md mb-4"
+          >
+            <Card className="border-primary/40 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors"
+              onClick={() => {
+                // Navigate to requester flow with saved request
+                localStorage.setItem('darmanegar_resume_request', JSON.stringify(activeRequest))
+                setView('requester-flow')
+              }}
+            >
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-teal-gradient flex items-center justify-center text-primary-foreground shrink-0">
+                  <RotateCcw className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-sm">شما یک درخواست فعال دارید</div>
+                  <div className="text-xs text-muted-foreground">برای ادامه و مشاهده پیشنهادها کلیک کنید</div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}

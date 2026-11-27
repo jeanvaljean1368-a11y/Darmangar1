@@ -85,6 +85,46 @@ export function RequesterFlow() {
   const [requestInfo, setRequestInfo] = useState<RequestInfo | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // Check for resume request on mount
+  useEffect(() => {
+    try {
+      const resume = localStorage.getItem('darmanegar_resume_request')
+      if (resume) {
+        const data = JSON.parse(resume)
+        localStorage.removeItem('darmanegar_resume_request')
+        if (data.requestId && data.token) {
+          fetch(`/api/request/${data.requestId}?t=${data.token}`)
+            .then((res) => res.json())
+            .then((d) => {
+              if (d.request) {
+                const now = new Date()
+                const remaining = d.request.status === 'ACTIVE'
+                  ? Math.max(0, Math.floor((new Date(d.request.expiresAt).getTime() - now.getTime()) / 1000))
+                  : 0
+                setRequestInfo({
+                  id: d.request.id,
+                  requesterToken: data.token,
+                  serviceType: d.request.serviceType,
+                  province: d.request.province,
+                  city: d.request.city,
+                  region: d.request.neighborhood || d.request.region,
+                  description: d.request.description,
+                  expiresAt: d.request.expiresAt,
+                  status: d.request.status,
+                  remainingSeconds: remaining,
+                  proposals: d.request.proposals || [],
+                  chatId: d.request.chatId,
+                  selectedProviderId: d.request.selectedProviderId,
+                })
+                setStep(d.request.chatId ? 'chat' : 'waiting')
+              }
+            })
+            .catch(() => {})
+        }
+      }
+    } catch {}
+  }, [])
+
   const handleSelectService = (s: ServiceType) => {
     setServiceType(s)
     setStep('location')
@@ -146,6 +186,13 @@ export function RequesterFlow() {
         proposals: [],
       })
       setStep('waiting')
+      // Save requester session for "continue" feature
+      try {
+        localStorage.setItem('darmanegar_requester_session', JSON.stringify({
+          requestId: data.request.id,
+          token: data.request.requesterToken,
+        }))
+      } catch {}
       toast.success(data.message || 'درخواست شما ثبت شد')
     } catch (e) {
       toast.error('خطا در ثبت درخواست')
@@ -295,6 +342,8 @@ export function RequesterFlow() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requesterToken: requestInfo.requesterToken }),
       })
+      // Clear saved session
+      localStorage.removeItem('darmanegar_requester_session')
       toast.info('درخواست لغو شد')
       goHome()
     } catch (e) {

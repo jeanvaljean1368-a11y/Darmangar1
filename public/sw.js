@@ -45,7 +45,9 @@ self.addEventListener('push', (event) => {
     data: {
       url: data.url || '/',
     },
-    vibrate: [200, 100, 200],
+    // صدای اعلان + ویبره
+    silent: false, // اطمینان از اینکه صدا پخش بشه
+    vibrate: [300, 150, 300, 150, 300], // ویبره قوی‌تر
     actions: [
       {
         action: 'open',

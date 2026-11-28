@@ -322,35 +322,35 @@ function AdminDashboard({ admin, onLogout, onBack }: {
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-4">
         <Tabs defaultValue="providers">
-          <TabsList className="grid grid-cols-7 mb-4">
-            <TabsTrigger value="providers">
+          <TabsList className="flex flex-wrap h-auto gap-1 mb-4 p-1">
+            <TabsTrigger value="providers" className="text-xs flex-1 min-w-[80px]">
               <Users className="w-4 h-4 ml-1" />
               ارائه‌دهندگان
               {stats && stats.counts.pendingProviders > 0 && (
                 <Badge className="mr-1 h-5 px-1 text-[10px] bg-amber-500 text-white">{stats.counts.pendingProviders.toLocaleString('fa-IR')}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="requests">
+            <TabsTrigger value="requests" className="text-xs flex-1 min-w-[80px]">
               <Inbox className="w-4 h-4 ml-1" />
               درخواست‌ها
             </TabsTrigger>
-            <TabsTrigger value="stats">
+            <TabsTrigger value="stats" className="text-xs flex-1 min-w-[80px]">
               <BarChart3 className="w-4 h-4 ml-1" />
               آمار
             </TabsTrigger>
-            <TabsTrigger value="revenue">
+            <TabsTrigger value="revenue" className="text-xs flex-1 min-w-[80px]">
               <Coins className="w-4 h-4 ml-1" />
               درآمد
             </TabsTrigger>
-            <TabsTrigger value="notifications">
+            <TabsTrigger value="notifications" className="text-xs flex-1 min-w-[80px]">
               <Bell className="w-4 h-4 ml-1" />
               اعلان‌ها
             </TabsTrigger>
-            <TabsTrigger value="feedback">
+            <TabsTrigger value="feedback" className="text-xs flex-1 min-w-[80px]">
               <MessageSquare className="w-4 h-4 ml-1" />
               بازخورد
             </TabsTrigger>
-            <TabsTrigger value="settings">
+            <TabsTrigger value="settings" className="text-xs flex-1 min-w-[80px]">
               <ShieldCheck className="w-4 h-4 ml-1" />
               تنظیمات
             </TabsTrigger>

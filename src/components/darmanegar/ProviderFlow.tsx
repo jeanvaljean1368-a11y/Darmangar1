@@ -958,8 +958,8 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
 
         {isApproved ? (
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="grid grid-cols-7 mb-4">
-              <TabsTrigger value="requests" className="text-xs">
+            <TabsList className="flex flex-wrap h-auto gap-1 mb-4 p-1">
+              <TabsTrigger value="requests" className="text-xs flex-1 min-w-[80px]">
                 <Inbox className="w-3.5 h-3.5 ml-1" />
                 درخواست‌ها
                 {activeRequests.length > 0 && (
@@ -968,27 +968,27 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="proposals" className="text-xs">
+              <TabsTrigger value="proposals" className="text-xs flex-1 min-w-[80px]">
                 <Send className="w-3.5 h-3.5 ml-1" />
                 پیشنهادها
               </TabsTrigger>
-              <TabsTrigger value="chats" className="text-xs">
+              <TabsTrigger value="chats" className="text-xs flex-1 min-w-[80px]">
                 <MessageCircle className="w-3.5 h-3.5 ml-1" />
                 چت‌ها
               </TabsTrigger>
-              <TabsTrigger value="wallet" className="text-xs">
+              <TabsTrigger value="wallet" className="text-xs flex-1 min-w-[80px]">
                 <Wallet className="w-3.5 h-3.5 ml-1" />
                 کیف پول
               </TabsTrigger>
-              <TabsTrigger value="stats" className="text-xs">
+              <TabsTrigger value="stats" className="text-xs flex-1 min-w-[80px]">
                 <BarChart3 className="w-3.5 h-3.5 ml-1" />
                 آمار
               </TabsTrigger>
-              <TabsTrigger value="credentials" className="text-xs">
+              <TabsTrigger value="credentials" className="text-xs flex-1 min-w-[80px]">
                 <ShieldCheck className="w-3.5 h-3.5 ml-1" />
                 اعتبار
               </TabsTrigger>
-              <TabsTrigger value="history" className="text-xs">
+              <TabsTrigger value="history" className="text-xs flex-1 min-w-[80px]">
                 <FileText className="w-3.5 h-3.5 ml-1" />
                 سوابق
               </TabsTrigger>

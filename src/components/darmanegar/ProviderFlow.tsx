@@ -872,6 +872,10 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-teal-50/30 to-background">
       {/* Auto push notification setup */}
       {isApproved && <AutoPushSetup providerId={provider.id} />}
+
+      {/* Push notification reminder banner */}
+      {isApproved && <PushReminderBanner />}
+
       <header className="px-4 py-3 border-b bg-white/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center gap-3">
           <Avatar className="w-10 h-10">
@@ -2403,6 +2407,67 @@ function getServiceLabel(serviceType: string): string {
     PHYSIOTHERAPY: 'فیزیوتراپی',
   }
   return labels[serviceType] || serviceType
+}
+
+// Push reminder banner — نمایش پیام فعال‌سازی اعلان
+function PushReminderBanner() {
+  const [show, setShow] = useState(true)
+  const [pushEnabled, setPushEnabled] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        // Check if push is enabled via debug API
+        const res = await fetch('/api/push/debug', { credentials: 'include' })
+        const data = await res.json()
+        if (active) {
+          setPushEnabled(data.isConfigured || false)
+        }
+      } catch {
+        if (active) setPushEnabled(false)
+      }
+    })()
+    return () => { active = false }
+  }, [])
+
+  // Don't show if push is enabled or banner was dismissed
+  if (pushEnabled === true || !show || pushEnabled === null) return null
+
+  return (
+    <div className="bg-amber-50 border-b border-amber-200 px-4 py-3">
+      <div className="max-w-md mx-auto flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center text-white shrink-0">
+          <Bell className="w-5 h-5" />
+        </div>
+        <div className="flex-1">
+          <div className="font-bold text-amber-800 text-sm">اعلان‌های گوشی را فعال کنید</div>
+          <div className="text-xs text-amber-700 mt-1">
+            برای دریافت درخواست‌های جدید حتی زمانی که در اپ نیستید، اعلان‌های Push را فعال کنید.
+          </div>
+          <Button
+            size="sm"
+            className="mt-2 bg-amber-500 hover:bg-amber-600 text-white"
+            onClick={() => {
+              // Switch to credentials tab
+              const tabs = document.querySelectorAll('[role="tab"]')
+              const credTab = Array.from(tabs).find((t) => t.textContent?.includes('اعتبار'))
+              if (credTab) (credTab as HTMLElement).click()
+            }}
+          >
+            <Bell className="w-3.5 h-3.5 ml-1" />
+            فعال‌سازی اعلان‌ها
+          </Button>
+        </div>
+        <button
+          onClick={() => setShow(false)}
+          className="text-amber-400 hover:text-amber-600 shrink-0"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function toEnglishDigits(s: string): string {

@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { getAdminFromRequest } from '@/lib/auth'
 import { ok, unauthorized, notFound } from '@/lib/http'
-import { notifyDocumentVerified } from '@/lib/notification'
+import { notifyDocumentVerified, createNotification } from '@/lib/notification'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,6 +33,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   // Send in-app notification to provider
   await notifyDocumentVerified(id).catch(() => {})
+
+  // Send notification to enable push notifications
+  await createNotification({
+    providerId: id,
+    type: 'GENERIC',
+    title: '🔔 اعلان‌های گوشی را فعال کنید',
+    message: 'برای دریافت درخواست‌های جدید حتی زمانی که در اپ نیستید، لطفاً اعلان‌های Push را فعال کنید.\nبه تب «اعتبار» بروید و روی «فعال‌سازی اعلان‌های Push» کلیک کنید.',
+    actionUrl: '/api/provider/credentials',
+  }).catch(() => {})
 
   return ok({ ok: true, message: 'ارائه‌دهنده تأیید شد' })
 }

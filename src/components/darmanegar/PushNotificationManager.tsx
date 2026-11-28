@@ -1,11 +1,11 @@
-// Push Notification Manager — فعال/غیرفعال‌سازی اعلان‌های Push
+// Push Notification Manager — فعال/غیرفعال‌سازی + تست اعلان‌های Push
 
 'use client'
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Bell, BellOff, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Bell, BellOff, Loader2, CheckCircle2, AlertCircle, Send } from 'lucide-react'
 import { toast } from 'sonner'
 
 export function PushNotificationManager({ providerId }: { providerId: string }) {
@@ -183,6 +183,34 @@ export function PushNotificationManager({ providerId }: { providerId: string }) 
             ) : (
               <><Bell className="w-4 h-4 ml-2" /> فعال‌سازی اعلان‌های Push</>
             )}
+          </Button>
+        )}
+
+        {/* Test button — فقط وقتی فعال است */}
+        {subscribed && (
+          <Button
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/push/test', {
+                  method: 'POST',
+                  credentials: 'include',
+                })
+                const data = await res.json()
+                if (data.ok) {
+                  toast.success(data.message)
+                } else {
+                  toast.error(data.error)
+                }
+              } catch {
+                toast.error('خطا در ارسال اعلان تستی')
+              }
+            }}
+            variant="outline"
+            className="w-full"
+            size="sm"
+          >
+            <Send className="w-3.5 h-3.5 ml-2" />
+            ارسال اعلان تستی
           </Button>
         )}
 

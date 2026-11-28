@@ -1,8 +1,9 @@
 // POST /api/push/subscribe — save push subscription for provider
+// مستقل از web-push library
 import { NextRequest } from 'next/server'
+import { db } from '@/lib/db'
 import { getProviderFromRequest } from '@/lib/auth'
 import { ok, unauthorized, bad } from '@/lib/http'
-import { savePushSubscription } from '@/lib/push'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,10 +21,28 @@ export async function POST(request: NextRequest) {
     }
 
     const userAgent = request.headers.get('user-agent') || undefined
-    await savePushSubscription(provider.id, { endpoint, keys }, userAgent)
+
+    // Upsert subscription
+    await db.pushSubscription.upsert({
+      where: { endpoint },
+      create: {
+        providerId: provider.id,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        userAgent,
+      },
+      update: {
+        providerId: provider.id,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        userAgent,
+      },
+    })
 
     return ok({ ok: true, message: 'اعلان‌های Push فعال شد' })
   } catch (e: any) {
+    console.error('Push subscribe error:', e)
     return bad('خطا در ثبت اعلان Push', 500)
   }
 }

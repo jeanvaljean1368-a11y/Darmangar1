@@ -26,7 +26,7 @@ import {
   ArrowRight, LogOut, Stethoscope, FileText, Wallet, Users, Clock,
   Inbox, Send, MessageCircle, UserCircle, CheckCircle2, XCircle,
   Loader2, Coins, Gift, MapPin, Phone, RefreshCw, Eye, Upload, Home as HomeIcon,
-  BarChart3, TrendingUp, Calendar, Star, CreditCard, ShieldCheck
+  BarChart3, TrendingUp, Calendar, Star, CreditCard, ShieldCheck, Bell
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'

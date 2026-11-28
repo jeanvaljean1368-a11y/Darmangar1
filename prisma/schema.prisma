@@ -69,6 +69,7 @@ model Provider {
   selectedForRequests ServiceRequest[]
   walletTransactions WalletTransaction[]
   notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
 
   @@index([province, city, serviceType, status])
   @@index([status])
@@ -100,6 +101,22 @@ model Notification {
 
   @@index([providerId, read, createdAt])
   @@index([providerId, createdAt])
+}
+
+// ===== Push Subscription (اعلان‌های Push برای موبایل/مرورگر) =====
+// حتی وقتی اپ باز نیست، اعلان روی صفحه نمایش داده می‌شود
+model PushSubscription {
+  id          String   @id @default(cuid())
+  providerId  String
+  endpoint    String   @unique // URL سرویس push (FCM, Mozilla, etc.)
+  p256dh      String   // کلید عمومی
+  auth        String   // کلید احراز هویت
+  userAgent   String?  // نوع مرورگر/دستگاه
+  createdAt   DateTime @default(now())
+
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
 }
 
 // ===== System Feedback (انتقادات، پیشنهادات و نظرات کلی سیستم) =====

@@ -7,6 +7,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useViewStore } from '@/stores/useViewStore'
 import { Logo } from './Logo'
 import { NotificationsBell } from './NotificationsBell'
+import { PushNotificationManager } from './PushNotificationManager'
 import { ChatPanel } from './ChatPanel'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -2082,6 +2083,9 @@ function ProviderCredentialsTab({ provider }: { provider: ProviderData }) {
           ))}
         </CardContent>
       </Card>
+
+      {/* Push Notifications */}
+      <PushNotificationManager providerId={provider.id} />
 
       {/* How to increase trust score */}
       <Card className="border-primary/20 bg-primary/5">

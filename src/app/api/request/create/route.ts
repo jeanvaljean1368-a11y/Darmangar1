@@ -117,18 +117,21 @@ export async function POST(request: NextRequest) {
       matchKey,
     })
 
-    // Send IN-APP NOTIFICATIONS to matching providers (replaces SMS)
-    // این اعلان‌ها در اپ به ارائه‌دهنده‌ها نمایش داده می‌شوند، نه SMS
+    // Send IN-APP NOTIFICATIONS + PUSH NOTIFICATIONS to matching providers
     if (matchingProviders.length > 0) {
       const serviceLabel = SERVICE_TYPES.find((s) => s.value === serviceType)?.label || serviceType
+      const notifTitle = isEmergency
+        ? `🚨 درخواست اورژانسی جدید: ${serviceLabel}`
+        : `درخواست جدید: ${serviceLabel}`
+      const notifBody = `محله: ${neighborhood}\n${description.substring(0, 120)}\nمهلت پاسخ: ${validityMin} دقیقه`
+
+      // 1. In-app notification
       await createNotificationsBulk(
         matchingProviders.map((p) => ({ providerId: p.id })),
         {
           type: 'NEW_REQUEST',
-          title: isEmergency
-            ? `🚨 درخواست اورژانسی جدید: ${serviceLabel}`
-            : `درخواست جدید: ${serviceLabel}`,
-          message: `محله: ${neighborhood}\n${description.substring(0, 120)}\nمهلت پاسخ: ${validityMin} دقیقه`,
+          title: notifTitle,
+          message: notifBody,
           requestId: serviceRequest.id,
           actionUrl: `/api/provider/requests`,
           metadata: {
@@ -140,6 +143,22 @@ export async function POST(request: NextRequest) {
           },
         }
       ).catch((e) => console.error('Notification creation error:', e))
+
+      // 2. Push notification (اعلان روی صفحه موبایل — حتی اگر اپ باز نیست)
+      try {
+        const { sendPushToProviders } = await import('@/lib/push')
+        await sendPushToProviders(
+          matchingProviders.map((p) => p.id),
+          {
+            title: notifTitle,
+            body: notifBody,
+            tag: `request_${serviceRequest.id}`,
+            url: '/',
+          }
+        )
+      } catch (e) {
+        console.error('Push notification error:', e)
+      }
     }
 
     return ok({

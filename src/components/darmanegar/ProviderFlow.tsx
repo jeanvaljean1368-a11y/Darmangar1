@@ -8,6 +8,7 @@ import { useViewStore } from '@/stores/useViewStore'
 import { Logo } from './Logo'
 import { NotificationsBell } from './NotificationsBell'
 import { PushNotificationManager } from './PushNotificationManager'
+import { AutoPushSetup } from './AutoPushSetup'
 import { ChatPanel } from './ChatPanel'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -869,6 +870,8 @@ function ProviderDashboard({ provider, onLogout, onOpenChat, onProviderUpdate }:
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-teal-50/30 to-background">
+      {/* Auto push notification setup */}
+      {isApproved && <AutoPushSetup providerId={provider.id} />}
       <header className="px-4 py-3 border-b bg-white/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center gap-3">
           <Avatar className="w-10 h-10">

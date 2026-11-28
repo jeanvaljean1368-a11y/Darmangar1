@@ -120,6 +120,12 @@ export async function POST(request: NextRequest) {
     // Send IN-APP NOTIFICATIONS + PUSH NOTIFICATIONS to matching providers
     if (matchingProviders.length > 0) {
       const serviceLabel = SERVICE_TYPES.find((s) => s.value === serviceType)?.label || serviceType
+      // عنوان اعلان Push — متن درخواستی کاربر
+      const pushTitle = isEmergency
+        ? `🚨 شما از درمانگر یک درخواست اورژانسی دارید`
+        : `شما از درمانگر یک درخواست دارید`
+      const pushBody = `خدمت: ${serviceLabel} | محله: ${neighborhood}\n${description.substring(0, 100)}\nمهلت پاسخ: ${validityMin} دقیقه`
+      // عنوان اعلان درون‌برنامه‌ای
       const notifTitle = isEmergency
         ? `🚨 درخواست اورژانسی جدید: ${serviceLabel}`
         : `درخواست جدید: ${serviceLabel}`
@@ -145,13 +151,14 @@ export async function POST(request: NextRequest) {
       ).catch((e) => console.error('Notification creation error:', e))
 
       // 2. Push notification (اعلان روی صفحه موبایل — حتی اگر اپ باز نیست)
+      // متن: «شما از درمانگر یک درخواست دارید»
       try {
         const { sendPushToProviders } = await import('@/lib/push')
         await sendPushToProviders(
           matchingProviders.map((p) => p.id),
           {
-            title: notifTitle,
-            body: notifBody,
+            title: pushTitle,
+            body: pushBody,
             tag: `request_${serviceRequest.id}`,
             url: '/',
           }
